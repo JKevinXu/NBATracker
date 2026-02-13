@@ -17,29 +17,30 @@ from nba_api.stats.static import teams as static_teams
 from nba_tracker.fetcher import get_team_roster, get_team_player_stats
 from nba_tracker.analyzer import compute_team_leaders, compute_team_summary
 
+import click
+
 TEAM_ABBR = "GSW"
 TEAM_ID = 1610612744
-SEASON = "2024-25"
+DEFAULT_SEASON = "2025-26"
 N_RECENT = 10
 API_DELAY = 0.6
-OUTPUT = os.path.join(os.path.dirname(__file__), "..", "reports", "warriors_report.md")
 
 
 def _pct(val: float) -> str:
     return f"{val * 100:.1f}%"
 
 
-def fetch_team_game_log() -> pd.DataFrame:
+def fetch_team_game_log(season: str) -> pd.DataFrame:
     time.sleep(API_DELAY)
     return TeamGameLog(
-        team_id=TEAM_ID, season=SEASON, season_type_all_star="Regular Season"
+        team_id=TEAM_ID, season=season, season_type_all_star="Regular Season"
     ).get_data_frames()[0]
 
 
-def fetch_player_game_log(player_id: int) -> pd.DataFrame:
+def fetch_player_game_log(player_id: int, season: str) -> pd.DataFrame:
     time.sleep(API_DELAY)
     return PlayerGameLog(
-        player_id=player_id, season=SEASON, season_type_all_star="Regular Season"
+        player_id=player_id, season=season, season_type_all_star="Regular Season"
     ).get_data_frames()[0]
 
 
@@ -58,11 +59,21 @@ def streak(results: list[str]) -> str:
     return f"{cur}{count}"
 
 
-def main() -> None:
-    print("Fetching data...")
+@click.command()
+@click.option("--season", default=DEFAULT_SEASON, help="NBA season (e.g. 2025-26).")
+@click.option("--output", "output_path", default=None, help="Output .md file path.")
+def main(season: str, output_path: str | None) -> None:
+    if output_path is None:
+        safe = season.replace("-", "_")
+        output_path = os.path.join(
+            os.path.dirname(__file__), "..", "reports", f"warriors_report_{safe}.md"
+        )
+
+    SEASON = season
+    print(f"Generating Warriors report for {SEASON}...")
 
     # -- team game log --
-    gl = fetch_team_game_log()
+    gl = fetch_team_game_log(SEASON)
     recent = gl.head(N_RECENT).copy()
 
     total_w = int(gl.iloc[0]["W"])
@@ -97,7 +108,7 @@ def main() -> None:
     all_perfs: list[dict] = []
     for pid, pname in key_players:
         try:
-            pdf = fetch_player_game_log(pid)
+            pdf = fetch_player_game_log(pid, SEASON)
             pr = pdf[pdf["Game_ID"].isin(recent_game_ids)]
             for _, row in pr.iterrows():
                 opp = str(row.get("MATCHUP", ""))
@@ -315,7 +326,7 @@ def main() -> None:
     w("")
 
     # --- Write file ---
-    out_path = os.path.abspath(OUTPUT)
+    out_path = os.path.abspath(output_path)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w") as f:
         f.write("\n".join(lines))
