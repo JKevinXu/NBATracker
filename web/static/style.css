@@ -1,0 +1,281 @@
+/* NBATracker Dashboard — Dark Theme */
+
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-card: #1c2128;
+  --bg-hover: #252c35;
+  --border: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent: #1f6feb;
+  --accent-light: #58a6ff;
+  --warriors-gold: #ffc72c;
+  --warriors-blue: #1d428a;
+  --positive: #3fb950;
+  --negative: #f85149;
+  --warning: #d29922;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* Navbar */
+.navbar {
+  background: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border);
+  padding: 0.6rem 1.5rem;
+}
+.navbar-brand {
+  color: var(--warriors-gold) !important;
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.5px;
+}
+.navbar-brand span {
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+.nav-link {
+  color: var(--text-secondary) !important;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem !important;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.nav-link:hover {
+  color: var(--text-primary) !important;
+  background: var(--bg-hover);
+}
+.nav-link.active {
+  color: var(--warriors-gold) !important;
+  background: rgba(255, 199, 44, 0.1);
+}
+
+/* Season selector */
+.season-select {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}
+.season-select:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.3);
+}
+
+/* Main content */
+.main-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* Page header */
+.page-header {
+  margin-bottom: 1.5rem;
+}
+.page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+}
+.page-header p {
+  color: var(--text-secondary);
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+}
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.card-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+.card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.card-sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Stat grid */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Tables */
+.table-container {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+thead th {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.75rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+thead th:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+thead th.sorted-asc::after { content: " \u25B2"; font-size: 0.65rem; }
+thead th.sorted-desc::after { content: " \u25BC"; font-size: 0.65rem; }
+
+tbody td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody tr:hover {
+  background: var(--bg-hover);
+}
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Chart containers */
+.chart-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.chart-box h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+/* Badges / pills */
+.tier-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.tier-elite     { background: rgba(63, 185, 80, 0.2); color: var(--positive); }
+.tier-positive  { background: rgba(88, 166, 255, 0.2); color: var(--accent-light); }
+.tier-neutral   { background: rgba(139, 148, 158, 0.15); color: var(--text-secondary); }
+.tier-negative  { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+.tier-struggling { background: rgba(248, 81, 73, 0.2); color: var(--negative); }
+
+.badge-untouchable { background: rgba(255, 199, 44, 0.2); color: var(--warriors-gold); }
+.badge-core        { background: rgba(63, 185, 80, 0.2); color: var(--positive); }
+.badge-available   { background: rgba(88, 166, 255, 0.2); color: var(--accent-light); }
+.badge-expendable  { background: rgba(139, 148, 158, 0.15); color: var(--text-secondary); }
+
+/* Positive / negative text */
+.text-pos { color: var(--positive); }
+.text-neg { color: var(--negative); }
+.text-gold { color: var(--warriors-gold); }
+.text-muted { color: var(--text-muted); }
+
+/* Loading spinner */
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+.loading::after {
+  content: "";
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border);
+  border-top-color: var(--warriors-gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Two-column layout */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* Trade scenario cards */
+.trade-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.trade-card h4 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+.trade-card .grade {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+}
+
+/* Plotly overrides for dark theme */
+.js-plotly-plot .plotly .modebar-btn {
+  color: var(--text-secondary) !important;
+}

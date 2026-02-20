@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Advanced Analytics — NBATracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Advanced Analytics</h1>
+  <p>{{ season }} advanced metrics, efficiency tiers, and impact analysis</p>
+</div>
+
+<div id="loading" class="loading">Loading advanced data…</div>
+<div id="content" style="display:none">
+
+  <!-- NET RTG scatter -->
+  <div class="chart-box">
+    <h3>Offensive vs Defensive Rating</h3>
+    <div id="netRtgScatter"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-box">
+      <h3>Efficiency Tiers (NET RTG)</h3>
+      <div id="tierChart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>TS% vs Usage Rate</h3>
+      <div id="tsUsageChart"></div>
+    </div>
+  </div>
+
+  <!-- PIE chart -->
+  <div class="chart-box">
+    <h3>Player Impact Estimate (PIE)</h3>
+    <div id="pieChart"></div>
+  </div>
+
+  <!-- Table -->
+  <div class="chart-box">
+    <h3>Advanced Metrics Table</h3>
+    <div class="table-container">
+      <table id="advTable">
+        <thead><tr>
+          <th>Player</th>
+          <th data-sort="num">GP</th>
+          <th data-sort="num">MIN</th>
+          <th data-sort="num">OFF RTG</th>
+          <th data-sort="num">DEF RTG</th>
+          <th data-sort="num">NET RTG</th>
+          <th data-sort="num">TS%</th>
+          <th data-sort="num">USG%</th>
+          <th data-sort="num">PIE</th>
+          <th data-sort="num">AST/TO</th>
+          <th>Tier</th>
+        </tr></thead>
+        <tbody id="advBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEASON = '{{ season }}';
+const tierColors = { Elite: '#3fb950', Positive: '#58a6ff', Neutral: '#8b949e', Negative: '#d29922', Struggling: '#f85149' };
+const tierClass = { Elite: 'tier-elite', Positive: 'tier-positive', Neutral: 'tier-neutral', Negative: 'tier-negative', Struggling: 'tier-struggling' };
+
+async function load() {
+  let data;
+  try { data = await apiFetch(`/api/advanced?season=${SEASON}`); }
+  catch(e) { return showError(e.message); }
+
+  // OFF vs DEF scatter
+  Plotly.newPlot('netRtgScatter', [{
+    x: data.map(p => p.OFF_RATING),
+    y: data.map(p => p.DEF_RATING),
+    text: data.map(p => `${p.PLAYER_NAME}<br>NET: ${p.NET_RATING.toFixed(1)}<br>PIE: ${(p.PIE * 100).toFixed(1)}%`),
+    mode: 'markers+text',
+    textposition: 'top center',
+    textfont: { size: 9, color: '#8b949e' },
+    marker: {
+      size: data.map(p => Math.max(8, p.PIE * 200)),
+      color: data.map(p => tierColors[p.TIER] || '#8b949e'),
+      line: { color: '#30363d', width: 1 },
+    },
+    type: 'scatter',
+    hovertemplate: '%{text}<extra></extra>',
+  }], {
+    ...PLOTLY_DARK,
+    xaxis: { ...PLOTLY_DARK.xaxis, title: 'Offensive Rating →' },
+    yaxis: { ...PLOTLY_DARK.yaxis, title: '← Better  Defensive Rating', autorange: 'reversed' },
+    showlegend: false,
+    shapes: [
+      { type: 'line', x0: 110, x1: 110, y0: 100, y1: 120, line: { color: '#30363d', dash: 'dash' }},
+      { type: 'line', x0: 100, x1: 125, y0: 110, y1: 110, line: { color: '#30363d', dash: 'dash' }},
+    ],
+    annotations: [
+      { x: 120, y: 104, text: 'Elite Zone', showarrow: false, font: { color: '#3fb950', size: 10 }},
+    ],
+  }, PLOTLY_CONFIG);
+
+  // Tier distribution
+  const tiers = {};
+  data.forEach(p => { tiers[p.TIER] = (tiers[p.TIER] || 0) + 1; });
+  const tierOrder = ['Elite', 'Positive', 'Neutral', 'Negative', 'Struggling'];
+  Plotly.newPlot('tierChart', [{
+    x: tierOrder.filter(t => tiers[t]),
+    y: tierOrder.filter(t => tiers[t]).map(t => tiers[t]),
+    type: 'bar',
+    marker: { color: tierOrder.filter(t => tiers[t]).map(t => tierColors[t]) },
+    text: tierOrder.filter(t => tiers[t]).map(t => tiers[t]),
+    textposition: 'outside',
+    textfont: { color: '#e6edf3' },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Players' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // TS% vs USG%
+  Plotly.newPlot('tsUsageChart', [{
+    x: data.map(p => (p.USG_PCT * 100)),
+    y: data.map(p => (p.TS_PCT * 100)),
+    text: data.map(p => p.PLAYER_NAME.split(' ').pop()),
+    mode: 'markers+text',
+    textposition: 'top center',
+    textfont: { size: 9, color: '#8b949e' },
+    marker: {
+      size: 12,
+      color: data.map(p => tierColors[p.TIER] || '#8b949e'),
+      line: { color: '#30363d', width: 1 },
+    },
+    type: 'scatter',
+    hovertemplate: '%{text}<br>USG: %{x:.1f}%<br>TS: %{y:.1f}%<extra></extra>',
+  }], {
+    ...PLOTLY_DARK,
+    xaxis: { ...PLOTLY_DARK.xaxis, title: 'Usage Rate %' },
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'True Shooting %' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // PIE bar
+  const pieSorted = [...data].sort((a, b) => b.PIE - a.PIE);
+  Plotly.newPlot('pieChart', [{
+    x: pieSorted.map(p => p.PLAYER_NAME.split(' ').pop()),
+    y: pieSorted.map(p => (p.PIE * 100).toFixed(1)),
+    type: 'bar',
+    marker: { color: pieSorted.map(p => tierColors[p.TIER] || '#8b949e') },
+    text: pieSorted.map(p => (p.PIE * 100).toFixed(1) + '%'),
+    textposition: 'outside',
+    textfont: { color: '#e6edf3', size: 10 },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'PIE %' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // Table
+  const tbody = document.getElementById('advBody');
+  tbody.innerHTML = data.map(p => `<tr>
+    <td style="font-weight:600">${p.PLAYER_NAME}</td>
+    <td>${p.GP}</td>
+    <td>${p.MIN.toFixed(1)}</td>
+    <td>${p.OFF_RATING.toFixed(1)}</td>
+    <td>${p.DEF_RATING.toFixed(1)}</td>
+    <td class="${p.NET_RATING >= 0 ? 'text-pos' : 'text-neg'}">${p.NET_RATING >= 0 ? '+' : ''}${p.NET_RATING.toFixed(1)}</td>
+    <td>${(p.TS_PCT * 100).toFixed(1)}%</td>
+    <td>${(p.USG_PCT * 100).toFixed(1)}%</td>
+    <td>${(p.PIE * 100).toFixed(1)}%</td>
+    <td>${p.AST_TO ? p.AST_TO.toFixed(2) : '-'}</td>
+    <td><span class="tier-badge ${tierClass[p.TIER]}">${p.TIER}</span></td>
+  </tr>`).join('');
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  initSortable('advTable');
+}
+load();
+</script>
+{% endblock %}

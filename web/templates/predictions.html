@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Predictions — NBATracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Season Predictions</h1>
+  <p>{{ season }} remaining-season projections and playoff odds</p>
+</div>
+
+<div id="loading" class="loading">Running models…</div>
+<div id="content" style="display:none">
+
+  <!-- Current status -->
+  <div class="stat-grid" id="kpiGrid"></div>
+
+  <!-- Model comparison -->
+  <div class="chart-box">
+    <h3>Projection Model Comparison</h3>
+    <div id="modelBar"></div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Monte Carlo distribution -->
+    <div class="chart-box">
+      <h3>Monte Carlo Win Distribution (10k simulations)</h3>
+      <div id="mcHist"></div>
+    </div>
+    <!-- Playoff odds -->
+    <div class="chart-box">
+      <h3>Playoff Odds</h3>
+      <div id="playoffGauge"></div>
+      <div id="playoffStats" style="padding:0.5rem"></div>
+    </div>
+  </div>
+
+  <!-- Model details table -->
+  <div class="chart-box">
+    <h3>Model Details</h3>
+    <div class="table-container">
+      <table id="modelTable">
+        <thead><tr>
+          <th>Model</th>
+          <th data-sort="num">Projected Wins</th>
+          <th data-sort="num">Projected Losses</th>
+          <th data-sort="num">Win%</th>
+        </tr></thead>
+        <tbody id="modelBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MC stats -->
+  <div class="chart-box">
+    <h3>Monte Carlo Statistics</h3>
+    <div class="stat-grid" id="mcStats"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEASON = '{{ season }}';
+
+async function load() {
+  let data;
+  try { data = await apiFetch(`/api/predictions?season=${SEASON}`); }
+  catch(e) { return showError(e.message); }
+  const c = data.current;
+  const mc = data.monte_carlo;
+  const po = data.playoffs;
+
+  // KPI
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="card">
+      <div class="card-title">Current Record</div>
+      <div class="card-value">${c.wins}-${c.losses}</div>
+      <div class="card-sub">#${c.seed} seed</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Remaining</div>
+      <div class="card-value">${c.remaining}</div>
+      <div class="card-sub">games left</div>
+    </div>
+    <div class="card">
+      <div class="card-title">PPG / Opp PPG</div>
+      <div class="card-value">${c.ppg.toFixed(1)}</div>
+      <div class="card-sub">vs ${c.opp_ppg.toFixed(1)}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Playoff Odds</div>
+      <div class="card-value ${po.pct_playoff >= 50 ? 'text-pos' : 'text-neg'}">${po.pct_playoff.toFixed(1)}%</div>
+      <div class="card-sub">Top 6 seed</div>
+    </div>
+  `;
+
+  // Model comparison bar
+  const models = data.models;
+  Plotly.newPlot('modelBar', [{
+    x: models.map(m => m.name),
+    y: models.map(m => m.wins),
+    type: 'bar',
+    marker: { color: [COLORS.muted, COLORS.accent, COLORS.gold, COLORS.positive, COLORS.warning] },
+    text: models.map(m => `${m.wins}-${m.losses}`),
+    textposition: 'outside',
+    textfont: { color: '#e6edf3', size: 12, family: 'monospace' },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Projected Wins', range: [0, 82] },
+    showlegend: false,
+    shapes: [
+      { type: 'line', x0: -0.5, x1: 4.5, y0: po.threshold_playoff, y1: po.threshold_playoff,
+        line: { color: COLORS.positive, dash: 'dash', width: 1.5 }},
+      { type: 'line', x0: -0.5, x1: 4.5, y0: po.threshold_playin, y1: po.threshold_playin,
+        line: { color: COLORS.warning, dash: 'dash', width: 1.5 }},
+    ],
+    annotations: [
+      { x: 4.3, y: po.threshold_playoff, text: 'Playoff', showarrow: false, font: { color: COLORS.positive, size: 10 }},
+      { x: 4.3, y: po.threshold_playin, text: 'Play-In', showarrow: false, font: { color: COLORS.warning, size: 10 }},
+    ],
+  }, PLOTLY_CONFIG);
+
+  // Monte Carlo histogram
+  const dist = mc.distribution;
+  const wins_k = Object.keys(dist).map(Number).sort((a, b) => a - b);
+  const probs = wins_k.map(k => dist[String(k)] * 100);
+  const barColors = wins_k.map(k => {
+    const total = c.wins + k;
+    if (total >= po.threshold_playoff) return COLORS.positive;
+    if (total >= po.threshold_playin) return COLORS.warning;
+    return COLORS.negative;
+  });
+
+  Plotly.newPlot('mcHist', [{
+    x: wins_k.map(k => c.wins + k),
+    y: probs,
+    type: 'bar',
+    marker: { color: barColors },
+    hovertemplate: '%{x} wins: %{y:.1f}%<extra></extra>',
+  }], {
+    ...PLOTLY_DARK,
+    xaxis: { ...PLOTLY_DARK.xaxis, title: 'Total Season Wins' },
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Probability %' },
+    showlegend: false,
+    shapes: [
+      { type: 'line', x0: po.threshold_playoff, x1: po.threshold_playoff, y0: 0, y1: Math.max(...probs) * 1.1,
+        line: { color: COLORS.positive, dash: 'dash' }},
+    ],
+  }, PLOTLY_CONFIG);
+
+  // Playoff gauge
+  Plotly.newPlot('playoffGauge', [{
+    type: 'indicator',
+    mode: 'gauge+number',
+    value: po.pct_playoff,
+    number: { suffix: '%', font: { color: '#e6edf3' } },
+    gauge: {
+      axis: { range: [0, 100], tickcolor: '#8b949e' },
+      bar: { color: po.pct_playoff >= 50 ? COLORS.positive : COLORS.negative },
+      bgcolor: '#30363d',
+      borderwidth: 0,
+      steps: [
+        { range: [0, 30], color: 'rgba(248,81,73,0.15)' },
+        { range: [30, 70], color: 'rgba(210,153,34,0.15)' },
+        { range: [70, 100], color: 'rgba(63,185,80,0.15)' },
+      ],
+    },
+  }], {
+    ...PLOTLY_DARK,
+    margin: { t: 10, b: 10, l: 30, r: 30 },
+    height: 200,
+  }, PLOTLY_CONFIG);
+
+  document.getElementById('playoffStats').innerHTML = `
+    <div style="display:flex;gap:2rem;justify-content:center;font-size:0.85rem">
+      <div><span class="text-pos">Playoff (top 6):</span> ${po.pct_playoff.toFixed(1)}%</div>
+      <div><span style="color:var(--warning)">Play-In (7-10):</span> ${(po.pct_playin - po.pct_playoff).toFixed(1)}%</div>
+      <div><span class="text-neg">Miss:</span> ${po.pct_miss.toFixed(1)}%</div>
+    </div>
+  `;
+
+  // Model table
+  document.getElementById('modelBody').innerHTML = models.map(m => `<tr>
+    <td style="font-weight:600">${m.name}</td>
+    <td>${m.wins}</td>
+    <td>${m.losses}</td>
+    <td>${(m.wins / 82 * 100).toFixed(1)}%</td>
+  </tr>`).join('');
+
+  // MC stats
+  document.getElementById('mcStats').innerHTML = `
+    <div class="card"><div class="card-title">Mean Additional Wins</div><div class="card-value">${mc.mean.toFixed(1)}</div></div>
+    <div class="card"><div class="card-title">Std Dev</div><div class="card-value">${mc.std.toFixed(1)}</div></div>
+    <div class="card"><div class="card-title">10th Pctile (Total)</div><div class="card-value">${c.wins + mc.p10}</div></div>
+    <div class="card"><div class="card-title">90th Pctile (Total)</div><div class="card-value">${c.wins + mc.p90}</div></div>
+    <div class="card"><div class="card-title">Best Case</div><div class="card-value text-pos">${c.wins + mc.max}</div></div>
+    <div class="card"><div class="card-title">Worst Case</div><div class="card-value text-neg">${c.wins + mc.min}</div></div>
+  `;
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  initSortable('modelTable');
+}
+load();
+</script>
+{% endblock %}

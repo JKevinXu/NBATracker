@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — NBATracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Warriors Dashboard</h1>
+  <p>{{ season }} Season Overview</p>
+</div>
+
+<div id="loading" class="loading">Loading data…</div>
+<div id="dash" style="display:none">
+
+  <!-- KPI Cards -->
+  <div class="stat-grid" id="kpiGrid"></div>
+
+  <!-- Standings -->
+  <div class="chart-box">
+    <h3>Western Conference Standings</h3>
+    <div class="table-container">
+      <table id="standingsTable">
+        <thead><tr>
+          <th data-sort="num">#</th>
+          <th>Team</th>
+          <th data-sort="num">W</th>
+          <th data-sort="num">L</th>
+          <th data-sort="num">Win%</th>
+          <th data-sort="num">GB</th>
+          <th data-sort="num">PPG</th>
+          <th data-sort="num">Opp PPG</th>
+          <th data-sort="num">Diff</th>
+        </tr></thead>
+        <tbody id="standingsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="grid-2">
+    <div class="chart-box">
+      <h3>PPG Trend (Rolling 5-game)</h3>
+      <div id="ppgChart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Win/Loss Margin</h3>
+      <div id="marginChart"></div>
+    </div>
+  </div>
+
+  <!-- Recent games table -->
+  <div class="chart-box">
+    <h3>Recent Games</h3>
+    <div class="table-container">
+      <table id="recentTable">
+        <thead><tr>
+          <th>Date</th><th>Matchup</th><th>Result</th>
+          <th data-sort="num">PTS</th><th data-sort="num">REB</th>
+          <th data-sort="num">AST</th><th data-sort="num">+/-</th>
+        </tr></thead>
+        <tbody id="recentBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEASON = '{{ season }}';
+
+async function load() {
+  let standings, gameLog;
+  try {
+    [standings, gameLog] = await Promise.all([
+      apiFetch(`/api/standings?season=${SEASON}`),
+      apiFetch(`/api/game-log?season=${SEASON}`),
+    ]);
+  } catch(e) { return showError(e.message); }
+
+  // Find GSW
+  const gsw = standings.find(t => t.TeamName === 'Warriors') || standings[0];
+
+  // KPI
+  const kpi = document.getElementById('kpiGrid');
+  const diff = (gsw.DiffPointsPG || 0);
+  kpi.innerHTML = `
+    <div class="card">
+      <div class="card-title">Record</div>
+      <div class="card-value">${gsw.WINS}-${gsw.LOSSES}</div>
+      <div class="card-sub">${(gsw.WinPCT * 100).toFixed(1)}% win rate</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Seed</div>
+      <div class="card-value text-gold">#${gsw.PlayoffRank}</div>
+      <div class="card-sub">Western Conference</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Points/Game</div>
+      <div class="card-value">${gsw.PointsPG.toFixed(1)}</div>
+      <div class="card-sub">Opp: ${gsw.OppPointsPG.toFixed(1)}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Pt Diff</div>
+      <div class="card-value ${diff >= 0 ? 'text-pos' : 'text-neg'}">${diff >= 0 ? '+' : ''}${diff.toFixed(1)}</div>
+      <div class="card-sub">per game</div>
+    </div>
+  `;
+
+  // Standings table
+  const sb = document.getElementById('standingsBody');
+  sb.innerHTML = standings.map((t, i) => {
+    const isGSW = t.TeamName === 'Warriors';
+    return `<tr style="${isGSW ? 'background:rgba(255,199,44,0.08)' : ''}">
+      <td>${i + 1}</td>
+      <td style="${isGSW ? 'color:#ffc72c;font-weight:600' : ''}">${t.TeamCity} ${t.TeamName}</td>
+      <td>${t.WINS}</td><td>${t.LOSSES}</td>
+      <td>${(t.WinPCT * 100).toFixed(1)}%</td>
+      <td>${t.ConferenceGamesBack || '-'}</td>
+      <td>${t.PointsPG.toFixed(1)}</td>
+      <td>${t.OppPointsPG.toFixed(1)}</td>
+      <td class="${(t.DiffPointsPG||0) >= 0 ? 'text-pos' : 'text-neg'}">${(t.DiffPointsPG||0) >= 0 ? '+' : ''}${(t.DiffPointsPG||0).toFixed(1)}</td>
+    </tr>`;
+  }).join('');
+
+  // PPG rolling trend
+  const games = gameLog.reverse();  // oldest first
+  const pts = games.map(g => g.PTS);
+  const dates = games.map(g => g.GAME_DATE);
+  const rolling = pts.map((_, i) => {
+    const slice = pts.slice(Math.max(0, i - 4), i + 1);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+  });
+
+  Plotly.newPlot('ppgChart', [{
+    x: dates, y: rolling, type: 'scatter', mode: 'lines',
+    line: { color: COLORS.gold, width: 2.5 },
+    name: 'PPG (5-game avg)',
+    fill: 'tozeroy', fillcolor: 'rgba(255,199,44,0.08)',
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Points' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // Win/loss margin bar chart
+  const margins = games.map(g => g.PLUS_MINUS || 0);
+  const colors = margins.map(m => m >= 0 ? COLORS.positive : COLORS.negative);
+
+  Plotly.newPlot('marginChart', [{
+    x: dates, y: margins, type: 'bar',
+    marker: { color: colors },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: '+/-' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // Recent games (last 10)
+  const recent = gameLog.slice(-10).reverse();
+  const rb = document.getElementById('recentBody');
+  rb.innerHTML = recent.map(g => {
+    const pm = g.PLUS_MINUS || 0;
+    return `<tr>
+      <td>${g.GAME_DATE}</td>
+      <td>${g.MATCHUP}</td>
+      <td><span class="${g.WL === 'W' ? 'text-pos' : 'text-neg'}" style="font-weight:600">${g.WL}</span></td>
+      <td>${g.PTS}</td><td>${g.REB}</td><td>${g.AST}</td>
+      <td class="${pm >= 0 ? 'text-pos' : 'text-neg'}">${pm >= 0 ? '+' : ''}${pm}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('dash').style.display = 'block';
+
+  initSortable('standingsTable');
+  initSortable('recentTable');
+}
+load();
+</script>
+{% endblock %}

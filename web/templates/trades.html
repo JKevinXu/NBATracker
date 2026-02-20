@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}Trade Plan — NBATracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Trade Deadline Plan</h1>
+  <p>{{ season }} trade analysis, asset tiers, and proposed scenarios</p>
+</div>
+
+<div id="loading" class="loading">Loading trade analysis…</div>
+<div id="content" style="display:none">
+
+  <!-- Asset tiers -->
+  <div class="chart-box">
+    <h3>Warriors Asset Classification</h3>
+    <div id="assetChart"></div>
+    <div class="table-container" style="margin-top:1rem">
+      <table id="assetTable">
+        <thead><tr>
+          <th>Player</th>
+          <th data-sort="num">PPG</th>
+          <th data-sort="num">NET RTG</th>
+          <th data-sort="num">PIE</th>
+          <th data-sort="num">Trade Value</th>
+          <th>Category</th>
+        </tr></thead>
+        <tbody id="assetBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Identified sellers -->
+  <div class="chart-box">
+    <h3>Identified Sellers (Likely Trade Partners)</h3>
+    <div id="sellerChart"></div>
+  </div>
+
+  <!-- Priority targets -->
+  <div class="chart-box">
+    <h3>Priority Trade Targets</h3>
+    <div id="targetChart"></div>
+    <div class="table-container" style="margin-top:1rem">
+      <table id="targetTable">
+        <thead><tr>
+          <th>Player</th>
+          <th>Team</th>
+          <th data-sort="num">PPG</th>
+          <th data-sort="num">REB</th>
+          <th data-sort="num">AST</th>
+          <th data-sort="num">DEF RTG</th>
+          <th data-sort="num">NET RTG</th>
+          <th data-sort="num">Gap-Fill</th>
+        </tr></thead>
+        <tbody id="targetBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Trade scenarios -->
+  <div class="chart-box">
+    <h3>Proposed Trade Scenarios</h3>
+    <div id="tradeScenarios"></div>
+  </div>
+
+  <!-- Impact comparison -->
+  <div class="chart-box">
+    <h3>Trade Impact Comparison</h3>
+    <div id="impactChart"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEASON = '{{ season }}';
+
+async function load() {
+  // Fetch data from multiple endpoints
+  let adv, standings, gapFill;
+  try {
+    [adv, standings, gapFill] = await Promise.all([
+      apiFetch(`/api/advanced?season=${SEASON}`),
+      apiFetch(`/api/standings?season=${SEASON}`),
+      apiFetch(`/api/gap-fill?season=${SEASON}`),
+    ]);
+  } catch(e) { return showError(e.message); }
+
+  // ── Asset Classification ──
+  const categorize = (p) => {
+    const pie = p.PIE * 100;
+    const net = p.NET_RATING;
+    const val = (pie * 0.4 + Math.max(0, net + 10) * 3 * 0.3 + p.MIN * 0.3).toFixed(1);
+    let cat = 'Expendable';
+    if (pie >= 12 && net >= 5) cat = 'Untouchable';
+    else if (pie >= 9 || net >= 2) cat = 'Core';
+    else if (pie >= 6 || net >= -3) cat = 'Available';
+    return { ...p, trade_value: parseFloat(val), category: cat };
+  };
+  const assets = adv.map(categorize).sort((a, b) => b.trade_value - a.trade_value);
+
+  const catBadge = { Untouchable: 'badge-untouchable', Core: 'badge-core', Available: 'badge-available', Expendable: 'badge-expendable' };
+  const catOrder = ['Untouchable', 'Core', 'Available', 'Expendable'];
+  const catColors = { Untouchable: '#ffc72c', Core: '#3fb950', Available: '#58a6ff', Expendable: '#8b949e' };
+
+  // Asset bar chart
+  Plotly.newPlot('assetChart', [{
+    x: assets.map(a => a.PLAYER_NAME.split(' ').pop()),
+    y: assets.map(a => a.trade_value),
+    type: 'bar',
+    marker: { color: assets.map(a => catColors[a.category]) },
+    text: assets.map(a => a.category),
+    hovertemplate: '%{x}<br>Value: %{y:.1f}<br>%{text}<extra></extra>',
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Trade Value Score' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // Asset table
+  document.getElementById('assetBody').innerHTML = assets.map(p => `<tr>
+    <td style="font-weight:600">${p.PLAYER_NAME}</td>
+    <td>${(p.MIN > 0 ? '—' : '0')}</td>
+    <td class="${p.NET_RATING >= 0 ? 'text-pos' : 'text-neg'}">${p.NET_RATING >= 0 ? '+' : ''}${p.NET_RATING.toFixed(1)}</td>
+    <td>${(p.PIE * 100).toFixed(1)}%</td>
+    <td>${p.trade_value}</td>
+    <td><span class="tier-badge ${catBadge[p.category]}">${p.category}</span></td>
+  </tr>`).join('');
+
+  // ── Sellers ──
+  const sellers = standings.filter(t => t.WinPCT < 0.42 && t.TeamName !== 'Warriors');
+  Plotly.newPlot('sellerChart', [{
+    x: sellers.map(t => `${t.TeamCity} ${t.TeamName}`),
+    y: sellers.map(t => t.WINS),
+    type: 'bar',
+    marker: { color: sellers.map(t => t.WinPCT < 0.35 ? COLORS.negative : COLORS.warning) },
+    text: sellers.map(t => `${t.WINS}-${t.LOSSES} (${(t.WinPCT * 100).toFixed(0)}%)`),
+    textposition: 'outside',
+    textfont: { color: '#e6edf3', size: 10 },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Wins' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // ── Priority Targets ──
+  const sellerAbbrs = new Set();
+  sellers.forEach(s => {
+    // Map city to abbreviation (approximate)
+    const fullName = `${s.TeamCity} ${s.TeamName}`;
+    sellerAbbrs.add(s.TeamName);
+  });
+
+  // Use gap-fill data — top targets from selling teams
+  const targets = gapFill.slice(0, 15);
+
+  Plotly.newPlot('targetChart', [{
+    x: targets.map(t => t.PLAYER_NAME.split(' ').pop()),
+    y: targets.map(t => t.gap_fill),
+    type: 'bar',
+    marker: { color: targets.map((_, i) => i < 3 ? COLORS.gold : i < 8 ? COLORS.accent : COLORS.muted) },
+    text: targets.map(t => t.gap_fill.toFixed(1)),
+    textposition: 'outside',
+    textfont: { color: '#e6edf3', size: 10 },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Gap-Fill Score' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  document.getElementById('targetBody').innerHTML = targets.map(t => `<tr>
+    <td style="font-weight:600">${t.PLAYER_NAME}</td>
+    <td>${t.TEAM_ABBREVIATION}</td>
+    <td>${t.PTS.toFixed(1)}</td>
+    <td>${t.REB.toFixed(1)}</td>
+    <td>${t.AST.toFixed(1)}</td>
+    <td>${t.DEF_RATING.toFixed(1)}</td>
+    <td class="${t.NET_RATING >= 0 ? 'text-pos' : 'text-neg'}">${t.NET_RATING >= 0 ? '+' : ''}${t.NET_RATING.toFixed(1)}</td>
+    <td style="color:var(--warriors-gold);font-weight:600">${t.gap_fill.toFixed(1)}</td>
+  </tr>`).join('');
+
+  // ── Trade Scenarios (generated from top targets + available assets) ──
+  const available = assets.filter(a => a.category === 'Available' || a.category === 'Expendable');
+  const scenarios = targets.slice(0, 4).map((target, i) => {
+    const sendPlayers = available.slice(i, i + 2).map(p => p.PLAYER_NAME).join(', ');
+    const grade = i === 0 ? 'A' : i === 1 ? 'A-' : i === 2 ? 'B+' : 'B';
+    const impact = target.gap_fill > 70 ? 'High' : target.gap_fill > 55 ? 'Medium' : 'Moderate';
+    return { target: target.PLAYER_NAME, team: target.TEAM_ABBREVIATION,
+             send: sendPlayers || 'TBD + Draft picks', grade, impact,
+             stats: `${target.PTS.toFixed(1)} PPG / ${target.REB.toFixed(1)} RPG / ${target.AST.toFixed(1)} APG`,
+             gapFill: target.gap_fill };
+  });
+
+  const scenDiv = document.getElementById('tradeScenarios');
+  scenDiv.innerHTML = scenarios.map((s, i) => `
+    <div class="trade-card" style="border-left: 3px solid ${i === 0 ? COLORS.gold : i < 2 ? COLORS.accent : COLORS.muted}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h4>Scenario ${i + 1}: Acquire ${s.target}</h4>
+        <span class="grade" style="color:${s.grade.startsWith('A') ? COLORS.positive : COLORS.accent}">${s.grade}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:0.75rem;font-size:0.85rem">
+        <div>
+          <div class="text-muted" style="margin-bottom:0.25rem">Acquire from</div>
+          <div>${s.target} (${s.team})</div>
+          <div class="text-muted" style="margin-top:0.5rem">Stats</div>
+          <div>${s.stats}</div>
+        </div>
+        <div>
+          <div class="text-muted" style="margin-bottom:0.25rem">Send</div>
+          <div>${s.send} + draft capital</div>
+          <div class="text-muted" style="margin-top:0.5rem">Projected Impact</div>
+          <div style="color:${s.impact === 'High' ? COLORS.positive : COLORS.accent}">${s.impact} — Gap-Fill: ${s.gapFill.toFixed(1)}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  // ── Impact comparison ──
+  const dimLabels = ['Defense', 'Scoring', 'Rebounding', 'Playmaking', 'Versatility', 'Clutch'];
+  const impactTraces = targets.slice(0, 3).map((t, i) => ({
+    type: 'scatterpolar',
+    r: [t.dim_defense, t.dim_scoring, t.dim_rebounding, t.dim_playmaking, t.dim_versatility, t.dim_clutch].map(v => v ? v.toFixed(1) : 0),
+    theta: dimLabels,
+    fill: 'toself',
+    name: t.PLAYER_NAME.split(' ').pop(),
+    line: { color: COLORS.series[i] },
+    fillcolor: COLORS.series[i] + '20',
+  }));
+
+  Plotly.newPlot('impactChart', impactTraces, {
+    ...PLOTLY_DARK,
+    polar: {
+      bgcolor: '#1c2128',
+      angularaxis: { color: '#8b949e', gridcolor: '#30363d' },
+      radialaxis: { color: '#8b949e', gridcolor: '#30363d', range: [0, 100] },
+    },
+    legend: { font: { color: '#e6edf3' } },
+    margin: { t: 40, b: 40 },
+  }, PLOTLY_CONFIG);
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  initSortable('assetTable');
+  initSortable('targetTable');
+}
+load();
+</script>
+{% endblock %}

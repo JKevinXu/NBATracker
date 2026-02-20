@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}Gap Analysis — NBATracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Gap-Fill Analysis</h1>
+  <p>{{ season }} league-wide scan for players who best fill Warriors weaknesses</p>
+</div>
+
+<div id="loading" class="loading">Scanning league for gap-fill candidates…</div>
+<div id="content" style="display:none">
+
+  <!-- Dimension weights visual -->
+  <div class="chart-box">
+    <h3>Gap-Fill Scoring Weights</h3>
+    <div id="weightsChart"></div>
+  </div>
+
+  <!-- Top 20 bar -->
+  <div class="chart-box">
+    <h3>Top 20 Players by Gap-Fill Score</h3>
+    <div id="gapBar"></div>
+  </div>
+
+  <!-- Archetype filter -->
+  <div class="chart-box">
+    <h3>Filter by Archetype</h3>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
+      <button class="tier-badge tier-elite" onclick="filterArch('all')" style="cursor:pointer;border:none;padding:0.3rem 0.8rem">All</button>
+      <button class="tier-badge tier-positive" onclick="filterArch('defender')" style="cursor:pointer;border:none;padding:0.3rem 0.8rem">🛡 Defenders</button>
+      <button class="tier-badge" style="cursor:pointer;border:none;padding:0.3rem 0.8rem;background:rgba(255,199,44,0.2);color:#ffc72c" onclick="filterArch('scorer')">🏀 Scorers</button>
+      <button class="tier-badge tier-neutral" onclick="filterArch('playmaker')" style="cursor:pointer;border:none;padding:0.3rem 0.8rem">🎯 Playmakers</button>
+      <button class="tier-badge tier-negative" onclick="filterArch('rebounder')" style="cursor:pointer;border:none;padding:0.3rem 0.8rem">💪 Rebounders</button>
+      <button class="tier-badge tier-struggling" onclick="filterArch('versatile')" style="cursor:pointer;border:none;padding:0.3rem 0.8rem">⭐ Versatile</button>
+    </div>
+    <div class="table-container">
+      <table id="gapTable">
+        <thead><tr>
+          <th>Rank</th>
+          <th>Player</th>
+          <th>Team</th>
+          <th data-sort="num">PPG</th>
+          <th data-sort="num">REB</th>
+          <th data-sort="num">AST</th>
+          <th data-sort="num">DEF RTG</th>
+          <th data-sort="num">TS%</th>
+          <th data-sort="num">NET RTG</th>
+          <th data-sort="num">Gap-Fill</th>
+          <th>Primary Strength</th>
+        </tr></thead>
+        <tbody id="gapBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Radar comparison for top 3 -->
+  <div class="chart-box">
+    <h3>Top 3 Candidates — Dimension Breakdown</h3>
+    <div id="radarChart"></div>
+  </div>
+
+  <!-- Dimension detail charts -->
+  <div class="grid-2">
+    <div class="chart-box">
+      <h3>Defensive Impact (Top 10)</h3>
+      <div id="defenseBar"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Scoring Efficiency (Top 10)</h3>
+      <div id="scoringBar"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEASON = '{{ season }}';
+let allData = [];
+
+function primaryStrength(p) {
+  const dims = {
+    '🛡 Defense': p.dim_defense || 0,
+    '🏀 Scoring': p.dim_scoring || 0,
+    '💪 Rebound': p.dim_rebounding || 0,
+    '🎯 Playmaking': p.dim_playmaking || 0,
+    '⭐ Versatile': p.dim_versatility || 0,
+    '🔥 Clutch': p.dim_clutch || 0,
+  };
+  return Object.entries(dims).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function archetype(p) {
+  const d = {
+    defender: p.dim_defense || 0,
+    scorer: p.dim_scoring || 0,
+    rebounder: p.dim_rebounding || 0,
+    playmaker: p.dim_playmaking || 0,
+    versatile: p.dim_versatility || 0,
+  };
+  return Object.entries(d).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('gapBody');
+  tbody.innerHTML = data.map((p, i) => `<tr>
+    <td>${i + 1}</td>
+    <td style="font-weight:600">${p.PLAYER_NAME}</td>
+    <td>${p.TEAM_ABBREVIATION}</td>
+    <td>${p.PTS.toFixed(1)}</td>
+    <td>${p.REB.toFixed(1)}</td>
+    <td>${p.AST.toFixed(1)}</td>
+    <td>${p.DEF_RATING.toFixed(1)}</td>
+    <td>${(p.TS_PCT * 100).toFixed(1)}%</td>
+    <td class="${p.NET_RATING >= 0 ? 'text-pos' : 'text-neg'}">${p.NET_RATING >= 0 ? '+' : ''}${p.NET_RATING.toFixed(1)}</td>
+    <td style="color:var(--warriors-gold);font-weight:700">${p.gap_fill.toFixed(1)}</td>
+    <td>${primaryStrength(p)}</td>
+  </tr>`).join('');
+}
+
+function filterArch(type) {
+  if (type === 'all') {
+    renderTable(allData);
+  } else {
+    renderTable(allData.filter(p => archetype(p) === type));
+  }
+}
+
+async function load() {
+  let data;
+  try { data = await apiFetch(`/api/gap-fill?season=${SEASON}`); }
+  catch(e) { return showError(e.message); }
+  allData = data;
+
+  // Weights donut
+  const weights = [
+    { name: 'Defense', value: 25, color: '#f85149' },
+    { name: 'Scoring', value: 20, color: '#ffc72c' },
+    { name: 'Rebounding', value: 15, color: '#58a6ff' },
+    { name: 'Playmaking', value: 15, color: '#3fb950' },
+    { name: 'Versatility', value: 15, color: '#a371f7' },
+    { name: 'Clutch', value: 10, color: '#f778ba' },
+  ];
+  Plotly.newPlot('weightsChart', [{
+    values: weights.map(w => w.value),
+    labels: weights.map(w => `${w.name} (${w.value}%)`),
+    type: 'pie',
+    hole: 0.5,
+    marker: { colors: weights.map(w => w.color) },
+    textinfo: 'label',
+    textposition: 'outside',
+    textfont: { color: '#e6edf3', size: 11 },
+    hovertemplate: '%{label}: %{value}%<extra></extra>',
+  }], {
+    ...PLOTLY_DARK,
+    showlegend: false,
+    height: 300,
+    margin: { t: 20, b: 20, l: 60, r: 60 },
+  }, PLOTLY_CONFIG);
+
+  // Gap-fill bar
+  Plotly.newPlot('gapBar', [{
+    x: data.map(p => p.PLAYER_NAME.split(' ').pop()),
+    y: data.map(p => p.gap_fill),
+    type: 'bar',
+    marker: {
+      color: data.map(p => {
+        if (p.gap_fill >= 70) return COLORS.gold;
+        if (p.gap_fill >= 55) return COLORS.accent;
+        return COLORS.muted;
+      }),
+    },
+    text: data.map(p => p.gap_fill.toFixed(1)),
+    textposition: 'outside',
+    textfont: { color: '#e6edf3', size: 10 },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Gap-Fill Score' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // Render table
+  renderTable(data);
+
+  // Radar — top 3
+  const dimLabels = ['Defense', 'Scoring', 'Rebounding', 'Playmaking', 'Versatility', 'Clutch'];
+  const top3 = data.slice(0, 3);
+  const radarTraces = top3.map((p, i) => ({
+    type: 'scatterpolar',
+    r: [p.dim_defense, p.dim_scoring, p.dim_rebounding, p.dim_playmaking, p.dim_versatility, p.dim_clutch].map(v => (v || 0).toFixed(1)),
+    theta: dimLabels,
+    fill: 'toself',
+    name: p.PLAYER_NAME,
+    line: { color: COLORS.series[i] },
+    fillcolor: COLORS.series[i] + '20',
+  }));
+
+  Plotly.newPlot('radarChart', radarTraces, {
+    ...PLOTLY_DARK,
+    polar: {
+      bgcolor: '#1c2128',
+      angularaxis: { color: '#8b949e', gridcolor: '#30363d' },
+      radialaxis: { color: '#8b949e', gridcolor: '#30363d', range: [0, 100] },
+    },
+    legend: { font: { color: '#e6edf3' } },
+    margin: { t: 40, b: 40 },
+  }, PLOTLY_CONFIG);
+
+  // Defense top 10
+  const byDef = [...data].sort((a, b) => (b.dim_defense || 0) - (a.dim_defense || 0)).slice(0, 10);
+  Plotly.newPlot('defenseBar', [{
+    x: byDef.map(p => p.PLAYER_NAME.split(' ').pop()),
+    y: byDef.map(p => p.dim_defense || 0),
+    type: 'bar',
+    marker: { color: '#f85149' },
+    text: byDef.map(p => (p.dim_defense || 0).toFixed(1)),
+    textposition: 'outside',
+    textfont: { color: '#e6edf3', size: 10 },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Defense Score' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // Scoring top 10
+  const byScoring = [...data].sort((a, b) => (b.dim_scoring || 0) - (a.dim_scoring || 0)).slice(0, 10);
+  Plotly.newPlot('scoringBar', [{
+    x: byScoring.map(p => p.PLAYER_NAME.split(' ').pop()),
+    y: byScoring.map(p => p.dim_scoring || 0),
+    type: 'bar',
+    marker: { color: COLORS.gold },
+    text: byScoring.map(p => (p.dim_scoring || 0).toFixed(1)),
+    textposition: 'outside',
+    textfont: { color: '#e6edf3', size: 10 },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'Scoring Score' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  initSortable('gapTable');
+}
+load();
+</script>
+{% endblock %}

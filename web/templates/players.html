@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Player Stats — NBATracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Player Stats</h1>
+  <p>{{ season }} per-game statistics &amp; comparisons</p>
+</div>
+
+<div id="loading" class="loading">Loading player data…</div>
+<div id="content" style="display:none">
+
+  <!-- Scoring leaders bar chart -->
+  <div class="chart-box">
+    <h3>Points Per Game</h3>
+    <div id="ppgBar"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-box">
+      <h3>Rebounds &amp; Assists Leaders</h3>
+      <div id="rebAstChart"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Shooting Efficiency</h3>
+      <div id="shootingChart"></div>
+    </div>
+  </div>
+
+  <!-- Radar comparison -->
+  <div class="chart-box">
+    <h3>Player Comparison (Top 5 by Minutes)</h3>
+    <div id="radarChart"></div>
+  </div>
+
+  <!-- Full stats table -->
+  <div class="chart-box">
+    <h3>Full Per-Game Statistics</h3>
+    <div class="table-container">
+      <table id="playerTable">
+        <thead><tr>
+          <th>Player</th>
+          <th data-sort="num">GP</th>
+          <th data-sort="num">MIN</th>
+          <th data-sort="num">PTS</th>
+          <th data-sort="num">REB</th>
+          <th data-sort="num">AST</th>
+          <th data-sort="num">STL</th>
+          <th data-sort="num">BLK</th>
+          <th data-sort="num">TOV</th>
+          <th data-sort="num">FG%</th>
+          <th data-sort="num">3P%</th>
+          <th data-sort="num">FT%</th>
+          <th data-sort="num">+/-</th>
+        </tr></thead>
+        <tbody id="playerBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEASON = '{{ season }}';
+
+async function load() {
+  let data;
+  try { data = await apiFetch(`/api/team-stats?season=${SEASON}`); }
+  catch(e) { return showError(e.message); }
+
+  // PPG bar
+  const sorted = [...data].sort((a, b) => b.PTS - a.PTS);
+  Plotly.newPlot('ppgBar', [{
+    x: sorted.map(p => p.PLAYER_NAME.split(' ').pop()),
+    y: sorted.map(p => p.PTS),
+    type: 'bar',
+    marker: { color: sorted.map((_, i) => i < 3 ? COLORS.gold : COLORS.muted) },
+    text: sorted.map(p => p.PTS.toFixed(1)),
+    textposition: 'outside',
+    textfont: { color: '#e6edf3', size: 11 },
+  }], {
+    ...PLOTLY_DARK,
+    yaxis: { ...PLOTLY_DARK.yaxis, title: 'PPG' },
+    showlegend: false,
+  }, PLOTLY_CONFIG);
+
+  // Reb & Ast grouped bar
+  const byMin = [...data].sort((a, b) => b.MIN - a.MIN).slice(0, 10);
+  Plotly.newPlot('rebAstChart', [
+    {
+      x: byMin.map(p => p.PLAYER_NAME.split(' ').pop()),
+      y: byMin.map(p => p.REB),
+      name: 'REB', type: 'bar', marker: { color: COLORS.accent },
+    },
+    {
+      x: byMin.map(p => p.PLAYER_NAME.split(' ').pop()),
+      y: byMin.map(p => p.AST),
+      name: 'AST', type: 'bar', marker: { color: COLORS.gold },
+    },
+  ], {
+    ...PLOTLY_DARK, barmode: 'group',
+    legend: { orientation: 'h', y: 1.15 },
+  }, PLOTLY_CONFIG);
+
+  // Shooting efficiency
+  const qualFg = data.filter(p => p.GP >= 10 && p.MIN >= 15);
+  Plotly.newPlot('shootingChart', [
+    {
+      x: qualFg.map(p => p.PLAYER_NAME.split(' ').pop()),
+      y: qualFg.map(p => (p.FG_PCT * 100).toFixed(1)),
+      name: 'FG%', type: 'bar', marker: { color: COLORS.gold },
+    },
+    {
+      x: qualFg.map(p => p.PLAYER_NAME.split(' ').pop()),
+      y: qualFg.map(p => (p.FG3_PCT * 100).toFixed(1)),
+      name: '3P%', type: 'bar', marker: { color: COLORS.accent },
+    },
+    {
+      x: qualFg.map(p => p.PLAYER_NAME.split(' ').pop()),
+      y: qualFg.map(p => (p.FT_PCT * 100).toFixed(1)),
+      name: 'FT%', type: 'bar', marker: { color: COLORS.positive },
+    },
+  ], {
+    ...PLOTLY_DARK, barmode: 'group',
+    yaxis: { ...PLOTLY_DARK.yaxis, title: '%', range: [0, 110] },
+    legend: { orientation: 'h', y: 1.15 },
+  }, PLOTLY_CONFIG);
+
+  // Radar — top 5 by MIN
+  const top5 = [...data].sort((a, b) => b.MIN - a.MIN).slice(0, 5);
+  const cats = ['PTS', 'REB', 'AST', 'STL', 'BLK'];
+  const maxVals = cats.map(c => Math.max(...data.map(p => p[c] || 0)));
+  const radarTraces = top5.map((p, i) => ({
+    type: 'scatterpolar',
+    r: cats.map((c, j) => maxVals[j] > 0 ? ((p[c] || 0) / maxVals[j] * 100).toFixed(1) : 0),
+    theta: cats,
+    fill: 'toself',
+    name: p.PLAYER_NAME.split(' ').pop(),
+    line: { color: COLORS.series[i] },
+    fillcolor: COLORS.series[i] + '20',
+  }));
+
+  Plotly.newPlot('radarChart', radarTraces, {
+    ...PLOTLY_DARK,
+    polar: {
+      bgcolor: '#1c2128',
+      angularaxis: { color: '#8b949e', gridcolor: '#30363d' },
+      radialaxis: { color: '#8b949e', gridcolor: '#30363d', showticklabels: false },
+    },
+    legend: { font: { color: '#e6edf3' } },
+    margin: { t: 40, b: 40 },
+  }, PLOTLY_CONFIG);
+
+  // Table
+  const tbody = document.getElementById('playerBody');
+  tbody.innerHTML = sorted.map(p => `<tr>
+    <td style="font-weight:600">${p.PLAYER_NAME}</td>
+    <td>${p.GP}</td>
+    <td>${p.MIN.toFixed(1)}</td>
+    <td>${p.PTS.toFixed(1)}</td>
+    <td>${p.REB.toFixed(1)}</td>
+    <td>${p.AST.toFixed(1)}</td>
+    <td>${p.STL.toFixed(1)}</td>
+    <td>${p.BLK.toFixed(1)}</td>
+    <td>${p.TOV.toFixed(1)}</td>
+    <td>${(p.FG_PCT * 100).toFixed(1)}%</td>
+    <td>${(p.FG3_PCT * 100).toFixed(1)}%</td>
+    <td>${(p.FT_PCT * 100).toFixed(1)}%</td>
+    <td class="${p.PLUS_MINUS >= 0 ? 'text-pos' : 'text-neg'}">${p.PLUS_MINUS >= 0 ? '+' : ''}${p.PLUS_MINUS.toFixed(1)}</td>
+  </tr>`).join('');
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  initSortable('playerTable');
+}
+load();
+</script>
+{% endblock %}
