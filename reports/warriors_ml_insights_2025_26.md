@@ -417,4 +417,52 @@ Based on the ML analysis:
 - **Avoid Pairing:** Minimize B. Podziemski + P. Spencer together (weighted net rating: -24.3)
 
 ---
+
+## Appendix: Metric & Model Definitions
+
+### ML Models Used
+
+| Model | Algorithm | Purpose |
+|---|---|---|
+| **K-Means Clustering** | Unsupervised partitioning algorithm that groups players into *k* clusters based on statistical similarity across 24 feature dimensions. The optimal *k* is chosen by maximizing the silhouette score |
+| **Random Forest** | Ensemble of 200 decision trees (max depth 6) trained to classify wins vs. losses based on per-game team stats. Feature importance scores reveal which stats most predict winning |
+| **Gradient Boosted Regressor** | 150 sequentially-fitted decision trees that predict expected FG% (xFG%) from a player's shot profile (distance mix, 3PT rate, FTA rate, volume). Comparing actual FG% to xFG% reveals shooting luck vs. skill |
+| **Ridge Regression (RAPM-Lite)** | Regularized linear regression on lineup-level data that isolates each player's individual contribution to team net rating, controlling for teammates and opponents. Similar to Regularized Adjusted Plus-Minus used in NBA analytics |
+| **Linear Regression (Fatigue)** | Ordinary least squares regression of scoring output on prior-game workload (rolling 3-game minute average) and rest days to quantify fatigue effects |
+
+### ML-Specific Metrics
+
+| Metric | Definition |
+|---|---|
+| **Silhouette Score** | Measures how well-separated clusters are. Ranges from -1 to +1; higher = better separation. Values >0.25 indicate reasonable structure |
+| **PCA Variance Explained** | The percentage of total data variance captured by the first two Principal Components. Used to visualize high-dimensional clustering in 2D |
+| **Feature Importance** | For tree-based models, the fraction of splits using each feature weighted by improvement in prediction accuracy. All importances sum to 1.0 |
+| **R² (R-squared)** | Coefficient of determination — the fraction of variance in the target variable explained by the model. 1.0 = perfect, 0 = no better than predicting the mean, negative = worse than the mean |
+| **Cross-Validation Accuracy** | Model accuracy estimated by training on subsets of data and testing on the held-out portion, preventing overfitting. Reported as the average across folds |
+| **xFG% (Expected FG%)** | Model-predicted field goal percentage based on a player's shot profile — the FG% you'd expect given *where* they shoot from, not *how well* they shoot |
+| **RAPM** | Regularized Adjusted Plus-Minus — a player's estimated impact on team net rating per 100 possessions, isolated from teammate effects. Positive = the team outscores opponents more with this player; negative = the team is outscored more |
+| **Workload Coefficient** | From the fatigue model: the change in expected scoring (points) for each additional average minute played in the prior 3 games. Negative = fatigue-sensitive |
+| **Rest Effect** | From the fatigue model: the change in expected scoring (points) for each additional day of rest between games |
+| **Weighted Net Rating** | For lineup pairs: the minute-weighted average net rating across all lineups featuring a given player pair. More reliable than raw averages because it accounts for sample size |
+| **Net Swing** | The difference between a player's on-court and off-court net rating. Positive = team performs better with this player on the floor |
+
+### Statistical Tests
+
+| Test | Definition |
+|---|---|
+| **Wald-Wolfowitz Runs Test** | A non-parametric test for randomness in a binary sequence (win/loss). Counts "runs" (consecutive same outcomes) and compares to what random chance would produce. p < 0.05 indicates statistically significant streakiness or anti-streakiness |
+| **Autocorrelation** | The correlation of a player's scoring with their own scoring in previous games (lag-1 = prior game, lag-2 = two games ago). Values > 0.3 suggest streaky scoring; values < -0.15 suggest mean-reverting behavior |
+| **Coefficient of Variation (CV)** | Standard deviation divided by mean, expressed as a percentage. Measures relative variability: <50% = consistent, 50-70% = moderate, >70% = volatile |
+| **p-value** | The probability of observing the data if the null hypothesis (no effect/no pattern) were true. p < 0.05 is conventionally considered statistically significant |
+
+### Composite Player Value Index
+
+| Component | Weight | What It Measures |
+|---|---|---|
+| **Production Score** | 30% | Normalized per-game stats (PTS, REB, AST, STL, BLK minus TOV) scaled 0–100 |
+| **Impact Score** | 30% | RAPM-lite value scaled 0–100 — how much the player improves team performance |
+| **Shooting Score** | 20% | Actual FG% relative to expected FG% (xFG%) scaled 0–100 — shooting above/below model expectations |
+| **Consistency Score** | 20% | Inverse of scoring CV% scaled 0–100 — lower variance = higher score |
+
+---
 *Models: scikit-learn 1.8.0 | Data: stats.nba.com 2025-26 | Generated: February 21, 2026*

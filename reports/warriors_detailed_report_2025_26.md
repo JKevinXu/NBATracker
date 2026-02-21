@@ -462,4 +462,87 @@
 - Trayce Jackson-Davis: 4.2 PTS / 3.1 REB / 0.9 AST (11.4 min)
 
 ---
+
+## Appendix: Metric Definitions
+
+### Basic Box Score Stats
+
+| Metric | Definition |
+|---|---|
+| **GP** | Games Played — total number of games a player/team appeared in |
+| **MPG / MIN** | Minutes Per Game — average playing time per game |
+| **PTS / PPG** | Points Per Game — average points scored per game |
+| **REB / RPG** | Rebounds Per Game — average total (offensive + defensive) rebounds per game |
+| **AST / APG** | Assists Per Game — average assists per game; credited when a pass leads directly to a made basket |
+| **STL / SPG** | Steals Per Game — average steals per game; a steal occurs when a defender takes possession from the offense |
+| **BLK / BPG** | Blocks Per Game — average blocks per game; a block occurs when a defender deflects an opponent's shot attempt |
+| **TOV / TPG** | Turnovers Per Game — average turnovers per game; a turnover is any play that results in loss of possession |
+| **FG%** | Field Goal Percentage — (Field Goals Made ÷ Field Goals Attempted) × 100; measures overall shooting accuracy |
+| **3PT% / FG3_PCT** | Three-Point Percentage — (3-Pointers Made ÷ 3-Pointers Attempted) × 100 |
+| **FT%** | Free Throw Percentage — (Free Throws Made ÷ Free Throws Attempted) × 100 |
+| **+/-** | Plus-Minus — the point differential while a player is on the court (team points scored minus team points allowed) |
+| **FGM / FGA** | Field Goals Made / Field Goals Attempted — raw shooting counts |
+| **FG3M / FG3A** | Three-Pointers Made / Three-Pointers Attempted |
+| **Opp PPG** | Opponent Points Per Game — average points allowed to opponents |
+| **GB** | Games Back — how many games behind the conference leader in the standings |
+
+### Advanced Metrics
+
+| Metric | Definition |
+|---|---|
+| **TS%** | True Shooting Percentage — measures shooting efficiency accounting for 2-pointers, 3-pointers, and free throws. Formula: PTS ÷ (2 × (FGA + 0.44 × FTA)). League average is ~57% |
+| **EFG% / eFG%** | Effective Field Goal Percentage — adjusts FG% to account for 3-pointers being worth more. Formula: (FGM + 0.5 × FG3M) ÷ FGA. League average is ~53% |
+| **USG%** | Usage Rate — estimates the percentage of team possessions a player uses while on the floor (via FGA, FTA, TOV). A 20% rate is average for a 5-man unit |
+| **OFF RTG** | Offensive Rating — points scored per 100 possessions while a player is on the court. Higher is better; league average is ~113 |
+| **DEF RTG** | Defensive Rating — points allowed per 100 possessions while a player is on the court. Lower is better; league average is ~113 |
+| **NET RTG** | Net Rating — OFF RTG minus DEF RTG. Positive = outscoring opponents per 100 possessions; negative = being outscored |
+| **PIE** | Player Impact Estimate — NBA's catch-all metric estimating a player's contribution as a percentage of game events (points, rebounds, assists, steals, blocks, turnovers, fouls, missed shots). League average is ~10% |
+| **AST%** | Assist Percentage — percentage of teammate field goals a player assisted while on the floor |
+| **REB%** | Rebound Percentage — percentage of available rebounds grabbed while on the floor |
+| **AST/TO** | Assist-to-Turnover Ratio — assists divided by turnovers; measures ball security relative to playmaking. Higher is better; >2.0 is very good |
+| **PACE** | Pace — estimated number of possessions per 48 minutes. Higher pace = faster game tempo |
+
+### Shooting Zone Definitions
+
+| Zone | Definition |
+|---|---|
+| **Restricted Area** | The painted semicircle within 4 feet of the basket — highest-efficiency zone on the floor |
+| **In The Paint (Non-RA)** | The painted area outside the restricted area but inside the free-throw lane (roughly 4–14 feet) |
+| **Mid-Range** | Shots from inside the 3-point line but outside the paint (roughly 14–22 feet) |
+| **Left/Right Corner 3** | Three-pointers from the baseline corners — the shortest 3-point distance (22 feet) |
+| **Above the Break 3** | Three-pointers from anywhere along the arc except the corners (23 ft 9 in) |
+| **Volume** | The percentage of total shot attempts taken from a given zone |
+
+### Hustle & Tracking Stats
+
+| Metric | Definition |
+|---|---|
+| **Contested Shots** | Number of opponent shot attempts a player closely contests (hand within proximity of the shooter) |
+| **Deflections** | Number of times a player tips or deflects a pass — a measure of active hands and defensive disruption |
+| **Screen Assists** | Screens set that directly lead to a teammate's made field goal — measures off-ball offensive contribution |
+| **Loose Balls Recovered** | Balls recovered from the floor in scramble situations |
+| **Box Outs** | Times a player boxes out an opponent to secure or create rebounding position |
+| **Charges Drawn** | Offensive fouls drawn by taking a legal defensive position |
+| **Avg Speed (mph)** | Average speed during the game measured by player tracking cameras |
+| **Distance (miles)** | Total distance covered per game measured by player tracking cameras |
+
+### Clutch Stats
+
+| Context | Definition |
+|---|---|
+| **Clutch** | NBA-defined as the last 5 minutes of the 4th quarter or overtime when the score margin is 5 points or fewer |
+
+### Splits & Context
+
+| Term | Definition |
+|---|---|
+| **Home / Road** | Performance when playing at Chase Center (home) vs. opponent arenas (road) |
+| **Rest Days** | Number of calendar days between games (0 = back-to-back, 1 = one day off, etc.) |
+| **Win% / W-L** | Winning percentage — wins divided by total games |
+| **Point Differential** | Average points scored minus average points allowed; a quick indicator of team quality |
+| **Share** | A player's percentage of the team's total scoring output |
+| **Per-36 Min** | Stats projected to a 36-minute playing time to compare players with different minute loads |
+| **Tier** | Performance tier based on Net Rating: 🟢 Elite (>+10), 🔵 Positive (+3 to +10), 🟡 Neutral (-3 to +3), 🟠 Negative (-10 to -3), 🔴 Poor (<-10) |
+
+---
 *Data source: NBA.com/stats via stats.nba.com | Season: 2025-26 | Report generated: February 21, 2026*
