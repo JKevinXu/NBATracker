@@ -1164,21 +1164,46 @@ blank()
 
 # ── 1. Win Model ─────────────────────────────────────────────────────
 h(2, "1. XGBoost Win Predictor + SHAP Explanations")
-p(f"An XGBoost classifier ({cv_acc*100:.1f}% cross-validated accuracy) trained on per-game stats "
-  f"identifies which factors most drive wins and losses.")
+blank()
+p("**What is this model?** We trained an XGBoost gradient-boosted decision tree classifier on every Warriors game "
+  f"this season ({games_played} games). The model takes 11 per-game statistics (points, rebounds, assists, steals, "
+  "blocks, turnovers, FG%, 3PT%, plus 5-game rolling averages of PTS, AST, and FG%) and predicts whether the "
+  f"Warriors win or lose. Cross-validated accuracy: **{cv_acc*100:.1f}%**.")
+blank()
+p("**Why XGBoost?** XGBoost is the gold standard for tabular data prediction. Unlike simpler models (logistic regression), "
+  "it captures non-linear interactions — for example, high assists AND high FG% together may matter more than either alone. "
+  "It also handles the small sample size (56 games) better than deep learning approaches.")
 blank()
 
 h(3, "1.1 SHAP Feature Importance")
-p("SHAP (SHapley Additive exPlanations) decomposes each game's prediction into individual feature contributions. "
-  "Features pushing predictions toward a win are positive; toward a loss, negative.")
+p("**What is SHAP?** SHAP (SHapley Additive exPlanations) is a game-theory-based method that assigns each feature "
+  "a contribution value for every individual prediction. Unlike simple feature importance (which just says \"FG% is important\"), "
+  "SHAP tells you *how much* FG% moved the win probability *for each specific game*.")
+blank()
+p("**How to read this chart:** Each horizontal bar represents one feature. The length of the bar is the average "
+  "absolute SHAP value across all games — the longer the bar, the more that feature influences the win/loss outcome. "
+  "Gold bars are the top 3 most important features; blue bars are less impactful.")
 img(shap_bar_path, "SHAP Feature Importance")
 
 h(3, "1.2 SHAP Beeswarm — Every Game Explained")
-p("Each dot is one game. Position shows impact on win probability; color shows the feature value (red=high, blue=low).")
+p("**How to read this chart:** Each dot represents one game. Features are listed vertically (most important at top). "
+  "For each feature, dots are spread horizontally: dots pushed to the **right** increased the model's win probability "
+  "for that game; dots pushed **left** decreased it. The color indicates the actual value of that stat in the game "
+  "(red = high value, blue = low value).")
+blank()
+p("**What to look for:** If a feature has red dots on the right and blue dots on the left (like FG_PCT), it means "
+  "higher values of that stat drive wins — intuitive. If it's reversed (like TOV), higher values drive losses. "
+  "Features with tightly clustered dots have consistent effects; spread-out dots indicate variable impact.")
 img(shap_beeswarm_path, "SHAP Beeswarm")
 
 h(3, "1.3 Win Probability Timeline")
-p("Model-estimated win probability for every game this season, with the 5-game rolling average overlaid.")
+p("**How to read this chart:** Each vertical bar represents one game. **Green bars** are wins; **red bars** are losses. "
+  "The height of each bar is the model's estimated win probability *based on the box-score stats*. The **gold line** "
+  "is a 5-game rolling average, which smooths out noise and reveals the team's momentum trend.")
+blank()
+p("**What to look for:** Stretches where the gold line dips below 0.5 indicate sustained poor performance windows. "
+  "Games where a green bar is short (low predicted win probability but still a win) represent \"lucky\" wins. "
+  "Conversely, tall red bars are games the team \"should have\" won based on their stats but didn't.")
 img(wp_timeline_path, "Win Probability Timeline")
 
 # Key insight from SHAP
@@ -1188,12 +1213,19 @@ for i, (feat, val) in enumerate(mean_shap_sorted[:3]):
     w(f"{i+1}. **{feat}** (mean |SHAP| = {val:.3f})")
 blank()
 p(f"> 💡 **Recommendation:** The model confirms that **{mean_shap_sorted[0][0]}** is the single most important "
-  f"factor separating wins from losses. The coaching staff should prioritize strategies that maximize this metric.")
+  f"factor separating wins from losses. The coaching staff should prioritize strategies that address this metric.")
 blank()
 
 # ── 2. What Separates Wins from Losses ────────────────────────────────
 h(2, "2. Win vs Loss Statistical DNA")
-p("Comparing average stats in wins versus losses reveals the statistical profile the Warriors need to achieve to win.")
+p("**What is this analysis?** We split all Warriors games into two groups — wins and losses — and compute the average "
+  "for every major stat in each group. The gap between these averages reveals the team's \"win recipe\": the statistical "
+  "profile they must hit to come out on top.")
+blank()
+p("**How to read this chart:** Each bar shows the difference between the Warriors' average stat in wins versus losses. "
+  "**Green bars** indicate stats that are higher in wins (good direction). **Red bars** indicate the opposite. "
+  "The taller the bar, the larger the gap — and the more critical that stat is for winning. "
+  "The table below provides exact numbers and a priority rating based on the gap size.")
 img(gap_path, "Win vs Loss Gap")
 
 tbl("Stat", "In Wins", "In Losses", "Gap", "Priority")
@@ -1213,8 +1245,20 @@ blank()
 
 # ── 3. Player Clustering ─────────────────────────────────────────────
 h(2, "3. Player Archetype Clustering")
-p(f"K-Means clustering (k={best_k}, silhouette={sil_scores[best_k]:.3f}) on {X_scaled.shape[1]} features "
-  "identifies natural player groupings within the roster.")
+p("**What is this model?** K-Means clustering is an unsupervised machine learning algorithm that groups players "
+  f"based on similarity across {X_scaled.shape[1]} statistical dimensions (points, rebounds, assists, shooting percentages, "
+  "advanced metrics, hustle stats, etc.). The algorithm automatically discovers natural groupings without being told "
+  "what the groups should be.")
+blank()
+p(f"**How it works:** Each player is represented as a point in {X_scaled.shape[1]}-dimensional space (one axis per stat). "
+  f"K-Means finds {best_k} cluster centers and assigns each player to the nearest center. We tested k=2 through k=6 and "
+  f"chose k={best_k} because it had the highest silhouette score ({sil_scores[best_k]:.3f}), which measures how well-separated "
+  "the clusters are (1.0 = perfect separation, 0.0 = random).")
+blank()
+p("**How to read this chart:** We use PCA (Principal Component Analysis) to project the high-dimensional data down to 2D "
+  "for visualization. Each dot is a player; colors represent cluster membership. Players close together are statistically "
+  f"similar. The axes show the first two principal components, which explain "
+  f"{pca.explained_variance_ratio_[0]*100:.1f}% and {pca.explained_variance_ratio_[1]*100:.1f}% of the total variance respectively.")
 img(cluster_path, "Player Clustering")
 
 for c in range(best_k):
@@ -1229,18 +1273,43 @@ blank()
 
 # ── 4. Player Radar Charts ───────────────────────────────────────────
 h(2, "4. Player Skill Profiles")
-p("Radar charts showing each player's strengths and weaknesses across 9 key dimensions, "
-  "normalized within the team (100 = team best, 0 = team worst).")
+p("**What is this chart?** A radar chart (also called a spider chart) displays multiple stats simultaneously on a "
+  "circular grid. Each spoke represents one skill dimension — Points, Assists, Rebounds, Steals, Blocks, FG%, 3PT%, TS%, and Usage Rate.")
+blank()
+p("**How to read it:** All values are normalized within the team on a 0-100 scale. **100** = team-best in that category; "
+  "**0** = team-worst. A player with a large, round shape is a well-rounded contributor. A player with a lopsided shape "
+  "has clear strengths (spikes outward) and weaknesses (dips inward). Compare shapes across players to see how their "
+  "skill profiles complement or overlap each other.")
+blank()
+p("**Example interpretation:** If Curry's radar spikes on Points, 3PT%, and TS% but dips on Rebounds and Blocks, "
+  "he's a high-volume efficient scorer with limited rim impact. If Green's radar spikes on Assists, Steals, and Rebounds "
+  "but dips on Points and Shooting%, he's a do-everything playmaker who doesn't score.")
 img(radar_path, "Player Radar Charts")
 
 # ── 5. On/Off Impact ─────────────────────────────────────────────────
 h(2, "5. On/Off Court Impact Analysis")
-p("Net Rating swing when each player is on vs. off the court (minimum 200 on-court minutes). "
-  "This is the most direct measure of individual impact on team performance.")
+p("**What is this analysis?** On/Off analysis compares the team's Net Rating (points scored minus points allowed per 100 possessions) "
+  "when a player is on the court versus when they sit on the bench. A player with a large positive swing is someone the team "
+  "performs significantly better *with* on the floor. A negative swing means the team actually plays better without them.")
+blank()
+p("**How to read the bar chart:** Each bar represents one player's Net Rating swing (on-court minus off-court). "
+  "**Green bars** extending to the right indicate the team is better with this player on court. **Red bars** extending "
+  "left mean the team is worse with this player. We filter to players with 200+ on-court minutes to ensure statistical significance. "
+  "A swing of ±5 or more is considered highly significant.")
 img(impact_path, "On/Off Court Impact")
+
 h(3, "5.1 Two-Way Impact Map")
-p("Separating offensive and defensive impact reveals which players help on which end of the floor. "
-  "The best players appear in the upper-right quadrant (help both offense and defense).")
+p("**How to read this chart:** This scatter plot separates the on/off analysis into two dimensions — offense (X-axis) "
+  "and defense (Y-axis). Each dot is a player; dot size reflects on-court minutes.")
+blank()
+p("**Quadrant interpretation:**")
+w("- **Upper-right (Two-Way Star ★):** Helps both offense AND defense — the most valuable players")
+w("- **Upper-left (Defense Only):** Helps the defense but may hurt the offense")
+w("- **Lower-right (Offense Only):** Helps the offense but is a defensive liability")
+w("- **Lower-left (Liability):** Hurts the team on both ends")
+blank()
+p("Note: The Y-axis is inverted because *lower* defensive rating = better defense. So players toward the top "
+  "of the chart have better defensive impact.")
 img(twoway_path, "Two-Way Impact Map")
 
 if len(impact_df) > 0:
