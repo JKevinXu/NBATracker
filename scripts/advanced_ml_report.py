@@ -1321,8 +1321,15 @@ if len(impact_df) > 0:
 
 # ── 6. Lineup Synergy ────────────────────────────────────────────────
 h(2, "6. Lineup Synergy Heatmap")
-p("Weighted net rating for every player pair, aggregated across all 5-man lineups. "
-  "Green = positive synergy; red = negative synergy.")
+p("**What is this chart?** A heatmap showing the weighted Net Rating for every possible pair of top-10 players, "
+  "aggregated across all 5-man lineups they've shared. This reveals which player combinations have natural chemistry "
+  "and which pairs struggle together.")
+blank()
+p("**How to read it:** Find a cell at the intersection of two player names. The number is their weighted Net Rating "
+  "when both are on the floor simultaneously. **Green cells** indicate the team outscores opponents when this pair plays "
+  "together; **red cells** mean the team is outscored. Darker colors = stronger effect. Only the lower-left triangle "
+  "is filled (the upper-right would be a mirror). Values are weighted by minutes to give more reliable estimates "
+  "for pairs with larger sample sizes.")
 img(heatmap_path, "Lineup Synergy Heatmap")
 
 # Find best and worst pairs
@@ -1346,11 +1353,29 @@ blank()
 
 # ── 7. Scoring & Efficiency Trends ───────────────────────────────────
 h(2, "7. Season Trends & Momentum")
-p("Three-panel view of the team's scoring, shooting efficiency, and win probability across the season.")
+p("**What is this chart?** A three-panel time series view tracking how the Warriors' performance has evolved over the season. "
+  "Time series analysis reveals trends, hot streaks, cold spells, and whether the team is improving or declining.")
+blank()
+p("**How to read the three panels:**")
+w("- **Top panel (Scoring Trend):** The faint gold line is actual points scored per game; the bold gold line is a "
+  "10-game rolling average, which smooths out noise. The dashed white line is the season average. When the rolling "
+  "average rises above the season average, the team is on a scoring hot streak.")
+w("- **Middle panel (Shooting Efficiency):** Gold line = FG% rolling average; blue line = 3PT% rolling average. "
+  "The dotted line at 45% is a general efficiency threshold. Watch for divergence between the two lines.")
+w("- **Bottom panel (Win Probability):** Background bars (green/red) show actual wins/losses. The gold line shows "
+  "the model's 10-game rolling predicted win probability. Periods where this line dips below 0.5 indicate stretches "
+  "where the team's underlying stats predict losing.")
 img(trend_path, "Season Trends")
 
 h(3, "7.1 Correlation Matrix")
-p("How each game stat correlates with winning. Stronger correlations indicate higher-leverage areas for improvement.")
+p("**What is this chart?** A correlation matrix shows the Pearson correlation coefficient (r) between every pair of "
+  "game stats and winning. Correlation ranges from -1 (perfect inverse relationship) to +1 (perfect positive relationship). "
+  "Values near 0 indicate no linear relationship.")
+blank()
+p("**How to read it:** Each cell shows the correlation between two stats. **Dark red** = strong positive correlation "
+  "(they go up and down together); **dark blue** = strong negative correlation (one goes up while the other goes down); "
+  "**white** = no relationship. The bottom row (\"Win\") is the most important — it shows which stats most strongly "
+  "correlate with winning.")
 img(corr_path, "Correlation Matrix")
 
 # Top correlates with winning
@@ -1362,16 +1387,36 @@ blank()
 
 # ── 8. Monthly Development ───────────────────────────────────────────
 h(2, "8. Player Monthly Development")
-p("Tracking how the top 4 scorers' production and efficiency evolve month-to-month, "
-  "revealing improvement arcs, slumps, and breakout periods.")
+p("**What is this chart?** Each subplot tracks one player's monthly scoring (gold bars) and shooting efficiency "
+  "(green dashed line, right axis) across the season. This reveals individual player development arcs.")
+blank()
+p("**How to read it:** The gold bars represent average PPG for each month; the white dots connected by the gold line "
+  "show the PPG trend. The green dashed line (right Y-axis) shows FG% for that month. "
+  "Look for players whose bars are growing (improving) or shrinking (slumping). A player whose FG% drops while PPG "
+  "rises may be forcing shots; a player whose FG% rises while PPG stays flat may deserve more shot attempts.")
 if monthly_path:
     img(monthly_path, "Monthly Trends")
 
 # ── 9. Bayesian Season Projection ────────────────────────────────────
 h(2, "9. Bayesian Season Projection")
-p(f"Using Bayesian inference to project the remaining {games_remaining} games, combining "
-  f"full-season performance (Beta({alpha_post}, {beta_post})) with recent form "
-  f"(last 15 games: {recent_wpct*100:.1f}% win rate) in a 60/40 blend.")
+p("**What is this model?** Bayesian inference treats the Warriors' \"true\" win probability as an unknown quantity "
+  "and uses the observed win-loss record to estimate a probability distribution over that unknown. We start with a "
+  "uniform prior (no assumptions) and update it with the season results to get a **posterior distribution** — a curve "
+  "showing how likely each win rate is.")
+blank()
+p(f"**How it works:** We combine two posteriors: (1) the full-season Beta({alpha_post}, {beta_post}) distribution, and "
+  f"(2) a recent-form posterior based on the last 15 games ({recent_wpct*100:.1f}% win rate), blended 60/40. "
+  f"We then run **50,000 Monte Carlo simulations** — randomly sampling a win probability from the blended distribution "
+  f"and simulating the remaining {games_remaining} games — to get a full distribution of possible season outcomes.")
+blank()
+p("**How to read the three panels:**")
+w("- **Left panel (Win Total Distribution):** Each bar is one possible win total. Height = probability. Blue histogram "
+  "uses the full-season win rate; red uses the recent-form rate. The gold dashed line is the blended median projection.")
+w("- **Center panel (Bayesian Win Rate Posterior):** The bell curves show the estimated \"true\" win rate. "
+  "The blue curve (full season) is narrow (more data = more certainty). The red curve (last 15 games) is wider "
+  "(less data = more uncertainty). Where the curves overlap is the most likely true win rate.")
+w("- **Right panel (Playoff Threshold Probability):** Bars show the probability of reaching various win totals. "
+  "Green bars are >50% likely; gold bars are 25-50%; red bars are <25%.")
 img(bayesian_path, "Bayesian Projection")
 
 ci_low = np.percentile(blended_wins, 10)
@@ -1392,15 +1437,36 @@ blank()
 
 # ── 10. SHAP Game Waterfall ──────────────────────────────────────────
 h(2, "10. Game Anatomy — Best Win & Worst Loss")
-p("SHAP waterfall charts decompose the model's prediction for the team's best win and worst loss, "
-  "showing exactly which factors drove the outcome.")
+p("**What is this chart?** SHAP waterfall charts take one specific game and break down *exactly* which stats pushed "
+  "the model's prediction toward a win or a loss. This is the most granular level of explainability — it answers "
+  "\"why did we win/lose *this specific game*?\"")
+blank()
+p("**How to read it:** Each horizontal bar represents one feature's SHAP contribution for that game. "
+  "The label shows \"Feature = Value\" (e.g., \"TOV = 12\" means the team had 12 turnovers). "
+  "**Green bars** pushed the prediction toward a win; **red bars** pushed toward a loss. "
+  "Features are sorted by magnitude (most impactful at top). The left chart shows the team's best win "
+  "(largest margin of victory); the right shows the worst loss (largest deficit).")
+blank()
+p("**What to look for:** Compare the two charts side by side. Stats that appear green in the best win but red in the "
+  "worst loss are the \"swing factors\" — the stats that most differentiate the team's ceiling from its floor.")
 if waterfall_path:
     img(waterfall_path, "SHAP Game Waterfall")
 
 # ── 11. Composite Value ──────────────────────────────────────────────
 h(2, "11. Composite Player Value Index")
-p("A multi-model composite score integrating production (30%), per-minute production (20%), "
-  "RAPM impact (30%), and shooting efficiency (20%).")
+p("**What is this chart?** A stacked horizontal bar chart showing each player's overall value, broken down into "
+  "four components from different analysis methods. This is the most comprehensive single-number summary of "
+  "player value on the roster.")
+blank()
+p("**The four components (and their weights):**")
+w("- **Production (30%, gold):** Raw counting stats — points, assists, rebounds, steals, blocks, minus turnovers. Higher = more total output.")
+w("- **Per-Minute Production (20%, blue):** Same as above but divided by minutes played. Identifies efficient contributors who may deserve more playing time.")
+w("- **Impact/RAPM (30%, green):** Regularized Adjusted Plus-Minus — estimated from lineup data via Ridge Regression. Measures how much the team's net rating changes when this player is involved, controlling for teammates.")
+w("- **Efficiency/TS% (20%, light green):** True Shooting Percentage — how efficiently the player converts possessions into points, accounting for free throws and 3-pointers.")
+blank()
+p("**How to read it:** Each player's total bar length is their composite score (0-100). Longer bars = more valuable. "
+  "The color segments show *why* they're valuable — a player with a big gold segment is a high-volume producer; "
+  "a player with a big green segment is a lineup-level impact player even if their box score numbers are modest.")
 img(composite_path, "Composite Value")
 
 tbl("Rank", "Player", "Production", "Per-Min", "RAPM", "Efficiency", "**Composite**")
@@ -1411,16 +1477,42 @@ blank()
 
 # ── 12. Scoring Distribution ─────────────────────────────────────────
 h(2, "12. Scoring Distribution")
-p("Violin plots show the full distribution of each player's game-by-game scoring, "
-  "revealing consistency, ceiling, floor, and outlier performances. "
-  "Individual game dots are overlaid for transparency.")
+p("**What is this chart?** A violin plot combines a box plot with a kernel density estimate to show the full distribution "
+  "of each player's game-by-game scoring. Unlike a simple \"PPG average,\" this reveals the entire shape of a player's "
+  "scoring output — their ceiling, floor, most common range, and outlier performances.")
+blank()
+p("**How to read it:** Each violin's width at a given point represents how frequently the player scores that many points. "
+  "A fat section means the player frequently scores in that range; a thin section means it's rare. "
+  "The **white horizontal line** is the mean (average); the **green line** is the median. "
+  "Small blue dots are individual games, jittered horizontally for visibility.")
+blank()
+p("**What to look for:**")
+w("- **Tall, narrow violins** = inconsistent scorer with wide range (boom-or-bust)")
+w("- **Short, fat violins** = consistent scorer in a narrow range (reliable)")
+w("- **Dots far above/below the main body** = outlier performances (career nights or duds)")
+w("- **Mean vs median gap** = if the mean is much higher than the median, the player has occasional big games that pull up the average")
 if violin_path:
     img(violin_path, "Scoring Distribution")
 
 # ── 13. Usage vs Efficiency ──────────────────────────────────────────
 h(2, "13. Usage Rate vs Shooting Efficiency")
-p("The ideal player lives in the upper-right: high usage AND high efficiency. "
-  "Bubble size represents minutes per game; color represents net rating (gold = positive, red = negative).")
+p("**What is this chart?** A bubble scatter plot that maps every player along two crucial dimensions: how much they "
+  "use the ball (Usage Rate, X-axis) and how efficiently they score (True Shooting %, Y-axis). This is the fundamental "
+  "efficiency-volume trade-off in basketball — can a player handle a heavy workload without becoming inefficient?")
+blank()
+p("**How to read it:**")
+w("- **X-axis (Usage Rate %):** The percentage of team possessions a player uses while on court (via shot attempt, "
+  "free throw attempt, or turnover). League average is ~20%.")
+w("- **Y-axis (True Shooting %):** Scoring efficiency accounting for 2-pointers, 3-pointers, and free throws. "
+  "League average is ~57%. Above the dashed line = above-average efficiency.")
+w("- **Bubble size:** Minutes per game — larger bubbles = more playing time")
+w("- **Bubble color:** Gold = positive net rating (team outscores opponents with this player); Red = negative net rating")
+blank()
+p("**Quadrant interpretation:**")
+w("- **Upper-right ⭐:** High usage + high efficiency = franchise cornerstones (best players live here)")
+w("- **Upper-left:** Low usage + high efficiency = efficient role players who could potentially handle more")
+w("- **Lower-right ⚠️:** High usage + low efficiency = volume shooters hurting the team (improvement targets)")
+w("- **Lower-left:** Low usage + low efficiency = limited contributors")
 if usage_eff_path:
     img(usage_eff_path, "Usage vs Efficiency")
     # Identify players in each quadrant
