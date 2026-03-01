@@ -19,13 +19,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import seaborn as sns
 
+from scripts.gsis.team_config import get_team, load_cache
+
 warnings.filterwarnings("ignore")
 
 # ── Paths ─────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent.parent
 CACHE = ROOT / "web" / "cache"
 
-TEAM_ID = 1610612744
 GOLD = "#FFC72C"
 BLUE = "#1D428A"
 GREEN = "#2ecc71"
@@ -44,7 +45,7 @@ plt.rcParams.update({
 
 
 def _load(name):
-    return json.loads((CACHE / f"{name}.json").read_text())
+    return load_cache(name)
 
 
 def _rs_to_df(data, idx=0):
@@ -61,9 +62,10 @@ def _rs_to_df(data, idx=0):
 def load_player_data():
     """Load and merge player game logs, ages, and tracking data."""
     # Player game logs (per-game)
+    team = get_team()
     pg = _load("player_gamelogs")
     df = _rs_to_df(pg)
-    df = df[df["TEAM_ABBREVIATION"] == "GSW"].copy()
+    df = df[df["TEAM_ABBREVIATION"] == team].copy()
     df["GAME_DATE_DT"] = pd.to_datetime(df["GAME_DATE"])
     df["MIN"] = pd.to_numeric(df["MIN"], errors="coerce").fillna(0)
     df["PTS"] = pd.to_numeric(df["PTS"], errors="coerce").fillna(0)
@@ -80,9 +82,19 @@ def load_player_data():
     df = df.sort_values(["PLAYER_NAME", "GAME_DATE_DT"]).reset_index(drop=True)
 
     # Player ages + season averages
-    lb = _load("league_base")
-    base = _rs_to_df(lb)
-    base = base[base["TEAM_ABBREVIATION"] == "GSW"].copy()
+    try:
+        lb = _load("league_base")
+        base = _rs_to_df(lb)
+        base = base[base["TEAM_ABBREVIATION"] == team].copy()
+    except FileNotFoundError:
+        # Build from player gamelogs if league_base unavailable
+        base = df.groupby("PLAYER_NAME").agg(
+            GP=("GAME_DATE_DT", "count"),
+            MIN=("MIN", "mean"),
+            PTS=("PTS", "mean"),
+        ).reset_index()
+        base["AGE"] = 25  # default if unknown
+        base["TEAM_ABBREVIATION"] = team
     age_map = dict(zip(base["PLAYER_NAME"], pd.to_numeric(base["AGE"], errors="coerce")))
     season_min_map = dict(zip(base["PLAYER_NAME"], pd.to_numeric(base["MIN"], errors="coerce")))
     season_pts_map = dict(zip(base["PLAYER_NAME"], pd.to_numeric(base["PTS"], errors="coerce")))
@@ -97,7 +109,7 @@ def load_player_data():
     try:
         ts = _load("tracking_speed")
         track = _rs_to_df(ts)
-        track = track[track["TEAM_ABBREVIATION"] == "GSW"].copy()
+        track = track[track["TEAM_ABBREVIATION"] == team].copy()
         speed_map = dict(zip(track["PLAYER_NAME"],
                              pd.to_numeric(track["AVG_SPEED"], errors="coerce")))
         dist_map = dict(zip(track["PLAYER_NAME"],

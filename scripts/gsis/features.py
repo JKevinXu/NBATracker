@@ -1,6 +1,6 @@
 """
 GSIS Feature Engineering Pipeline
-Builds the pre-game feature matrix for the Warriors' 2025-26 season.
+Builds the pre-game feature matrix for any team's 2025-26 season.
 Every feature for game N is computed using ONLY data available *before* game N.
 """
 
@@ -11,20 +11,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from scripts.gsis.team_config import get_team, load_cache
+
 # ── paths ──────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent.parent
 CACHE = ROOT / "web" / "cache"
 
-TEAM_ID = 1610612744  # Warriors
-
-# Mapping from 3-letter abbreviations to team IDs (from standings)
-# We'll build this dynamically from standings data
-
 # ── helpers ────────────────────────────────────────────────────────
 
 def _load(name: str) -> dict:
-    """Load a cached JSON file and return the raw dict."""
-    return json.loads((CACHE / f"{name}.json").read_text())
+    """Load a cached JSON file via team_config."""
+    return load_cache(name)
 
 
 def _rs_to_df(data: dict, idx: int = 0) -> pd.DataFrame:
@@ -36,38 +33,44 @@ def _rs_to_df(data: dict, idx: int = 0) -> pd.DataFrame:
 
 
 def _parse_date(date_str: str) -> datetime:
-    """Parse NBA date strings like 'FEB 19, 2026'."""
-    return datetime.strptime(date_str.strip(), "%b %d, %Y")
+    """Parse NBA date strings in various formats."""
+    date_str = date_str.strip()
+    # Try multiple formats
+    for fmt in ["%b %d, %Y", "%B %d, %Y", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"Cannot parse date: {date_str}")
 
 
 # ── opponent lookup tables ─────────────────────────────────────────
 
 def build_opponent_table() -> pd.DataFrame:
     """Build a table of every NBA team's season-level stats from standings."""
-    standings = _load("standings")
-    df = _rs_to_df(standings)
-    # Compute useful columns
-    df["WIN_PCT"] = df["WinPCT"].astype(float)
-    df["PPG"] = df["PointsPG"].astype(float)
-    df["OPP_PPG"] = df["OppPointsPG"].astype(float)
-    df["DIFF_PPG"] = df["DiffPointsPG"].astype(float)
-    df["TEAM_FULL"] = df["TeamCity"] + " " + df["TeamName"]
-    return df
+    try:
+        standings = _load("standings")
+        df = _rs_to_df(standings)
+        df["WIN_PCT"] = df["WinPCT"].astype(float)
+        df["PPG"] = df["PointsPG"].astype(float)
+        df["OPP_PPG"] = df["OppPointsPG"].astype(float)
+        df["DIFF_PPG"] = df["DiffPointsPG"].astype(float)
+        df["TEAM_FULL"] = df["TeamCity"] + " " + df["TeamName"]
+        return df
+    except FileNotFoundError:
+        return pd.DataFrame()
 
 
 def build_opponent_advanced() -> dict:
     """
-    Build per-team advanced stats (OFF_RTG, DEF_RTG, NET_RTG, PACE, TS%)
-    by aggregating player-level advanced data from league_adv.
+    Build per-team advanced stats from standings data.
     """
-    adv = _load("league_adv")
-    df = _rs_to_df(adv)
-    # Aggregate to team level (weighted by minutes would be ideal, but
-    # for team-level OFF/DEF RTG we take the team-level figures from
-    # the min-weighted data in standings instead).
-    # For now, approximate from standings PPG and OppPPG
-    standings = _load("standings")
-    st = _rs_to_df(standings)
+    try:
+        standings = _load("standings")
+        st = _rs_to_df(standings)
+    except FileNotFoundError:
+        return {}
+
     result = {}
     for _, row in st.iterrows():
         tid = row["TeamID"]
@@ -76,7 +79,6 @@ def build_opponent_advanced() -> dict:
         gp = wins + losses
         ppg = float(row["PointsPG"])
         opp_ppg = float(row["OppPointsPG"])
-        # Approximate ratings (per-game, not per-100, but directionally correct)
         result[tid] = {
             "WIN_PCT": float(row["WinPCT"]),
             "PPG": ppg,
@@ -110,15 +112,20 @@ def _is_home(matchup: str) -> int:
 
 def build_abbrev_map() -> dict:
     """Map 3-letter abbreviations to TeamIDs using league_base."""
-    lb = _load("league_base")
-    df = _rs_to_df(lb)
-    mapping = {}
-    for _, row in df.iterrows():
-        abbrev = row["TEAM_ABBREVIATION"]
-        tid = row["TEAM_ID"]
-        if abbrev not in mapping:
-            mapping[abbrev] = tid
-    return mapping
+    try:
+        lb = _load("league_base")
+        df = _rs_to_df(lb)
+        mapping = {}
+        for _, row in df.iterrows():
+            abbrev = row["TEAM_ABBREVIATION"]
+            tid = row["TEAM_ID"]
+            if abbrev not in mapping:
+                mapping[abbrev] = tid
+        return mapping
+    except FileNotFoundError:
+        # Return a basic map from team_config
+        from scripts.gsis.fetch_bref import TEAM_META
+        return {k: v["id"] for k, v in TEAM_META.items()}
 
 
 # ── rolling-stat helpers ───────────────────────────────────────────
@@ -152,6 +159,8 @@ def build_feature_matrix() -> pd.DataFrame:
     Build the full pre-game feature matrix.
     Returns a DataFrame with one row per game and only pre-game features.
     """
+    team = get_team()
+
     # ── 1. Load game log ─────────────────────────────────────────
     gl_data = _load("gamelog")
     gl = _rs_to_df(gl_data)
@@ -169,9 +178,10 @@ def build_feature_matrix() -> pd.DataFrame:
                 "FTM", "FTA", "FT_PCT", "OREB", "DREB", "REB", "AST",
                 "STL", "BLK", "TOV", "PF"]
     for c in num_cols:
-        gl[c] = pd.to_numeric(gl[c], errors="coerce")
+        if c in gl.columns:
+            gl[c] = pd.to_numeric(gl[c], errors="coerce")
 
-    # ── 2. Rolling Warriors features (use only data before game) ─
+    # ── 2. Rolling team features (use only data before game) ─
     gl["L5_PTS"] = _rolling_mean(gl["PTS"], 5)
     gl["L10_PTS"] = _rolling_mean(gl["PTS"], 10)
     gl["L5_AST"] = _rolling_mean(gl["AST"], 5)
@@ -224,7 +234,6 @@ def build_feature_matrix() -> pd.DataFrame:
     opp_ppg = []
     opp_opp_ppg = []
     opp_net_ppg = []
-    opp_gp = []
 
     for _, row in gl.iterrows():
         opp_abbrev = row["OPP_ABBREV"]
@@ -235,13 +244,11 @@ def build_feature_matrix() -> pd.DataFrame:
             opp_ppg.append(s["PPG"])
             opp_opp_ppg.append(s["OPP_PPG"])
             opp_net_ppg.append(s["NET_PPG"])
-            opp_gp.append(s["GP"])
         else:
             opp_win_pct.append(0.5)
             opp_ppg.append(110.0)
             opp_opp_ppg.append(110.0)
             opp_net_ppg.append(0.0)
-            opp_gp.append(56)
 
     gl["OPP_WIN_PCT"] = opp_win_pct
     gl["OPP_PPG"] = opp_ppg
@@ -262,7 +269,6 @@ def build_feature_matrix() -> pd.DataFrame:
         season_meeting_num.append(n_prior + 1)
         if n_prior > 0:
             h2h_win_pct.append(prior_vs_opp["WIN"].mean())
-            # Approximate pts diff from our PTS vs avg
             h2h_pts_diff.append(prior_vs_opp["PTS"].mean() - 110.0)
         else:
             h2h_win_pct.append(0.5)  # no prior data → neutral
@@ -277,15 +283,17 @@ def build_feature_matrix() -> pd.DataFrame:
     try:
         pg_data = _load("player_gamelogs")
         pg = _rs_to_df(pg_data)
+        pg = pg[pg["TEAM_ABBREVIATION"] == team].copy()
         pg["GAME_DATE_DT"] = pd.to_datetime(pg["GAME_DATE"])
 
-        key_players = {
-            "Stephen Curry": "CURRY",
-            "Jimmy Butler III": "BUTLER",
-            "De'Anthony Melton": "MELTON",
-            "Draymond Green": "GREEN",
-            "Jonathan Kuminga": "KUMINGA",
-        }
+        # Dynamically detect top 5 players by total minutes
+        pg["MIN_NUM"] = pd.to_numeric(pg["MIN"], errors="coerce").fillna(0)
+        total_mins = pg.groupby("PLAYER_NAME")["MIN_NUM"].sum().nlargest(5)
+        key_players = {}
+        for i, (name, _) in enumerate(total_mins.items()):
+            # Create a safe column prefix from last name
+            prefix = name.split()[-1].upper()[:8]
+            key_players[name] = prefix
 
         game_ids = gl["Game_ID"].tolist()
 
@@ -301,7 +309,6 @@ def build_feature_matrix() -> pd.DataFrame:
             mins_by_game = dict(zip(player_pg["GAME_ID"], pd.to_numeric(player_pg["MIN"], errors="coerce")))
             fatigue_vals = []
             for idx_g in range(len(game_ids)):
-                # Last 3 games this player played before game idx_g
                 prior_ids = game_ids[:idx_g]
                 prior_mins = [mins_by_game.get(gid, 0) for gid in prior_ids if gid in mins_by_game]
                 last3 = prior_mins[-3:] if len(prior_mins) >= 3 else prior_mins
@@ -309,12 +316,14 @@ def build_feature_matrix() -> pd.DataFrame:
                 fatigue_vals.append(avg_min)
             gl[f"{col_prefix}_FATIGUE"] = fatigue_vals
     except Exception:
-        # If player gamelogs unavailable, set defaults
-        for suffix in ["CURRY", "BUTLER", "MELTON", "GREEN", "KUMINGA"]:
+        # If player gamelogs unavailable, set generic defaults
+        key_players = {f"PLAYER_{i}": f"P{i}" for i in range(1, 6)}
+        for suffix in key_players.values():
             gl[f"{suffix}_AVAILABLE"] = 1
             gl[f"{suffix}_FATIGUE"] = 30.0
 
     # ── 6. Select feature columns ────────────────────────────────
+    # Static features (always available)
     feature_cols = [
         # Rolling team stats
         "L5_PTS", "L10_PTS", "L5_AST", "L10_AST", "L5_REB", "L10_REB",
@@ -334,13 +343,12 @@ def build_feature_matrix() -> pd.DataFrame:
         "OPP_WIN_PCT", "OPP_PPG", "OPP_OPP_PPG", "OPP_NET_PPG",
         # Head-to-head
         "H2H_WIN_PCT", "H2H_PTS_DIFF", "H2H_GAMES", "SEASON_MEETING_NUM",
-        # Player availability
-        "CURRY_AVAILABLE", "BUTLER_AVAILABLE", "MELTON_AVAILABLE",
-        "GREEN_AVAILABLE", "KUMINGA_AVAILABLE",
-        # Player fatigue
-        "CURRY_FATIGUE", "BUTLER_FATIGUE", "MELTON_FATIGUE",
-        "GREEN_FATIGUE", "KUMINGA_FATIGUE",
     ]
+
+    # Dynamic player features
+    for player_name, col_prefix in key_players.items():
+        feature_cols.append(f"{col_prefix}_AVAILABLE")
+        feature_cols.append(f"{col_prefix}_FATIGUE")
 
     target = "WIN"
     meta_cols = ["Game_ID", "DATE", "MATCHUP", "OPP_ABBREV", "WL", "PTS"]
@@ -355,7 +363,12 @@ def build_feature_matrix() -> pd.DataFrame:
 # ── convenience ────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1:
+        from scripts.gsis.team_config import set_team
+        set_team(sys.argv[1])
     df, fcols, tgt = build_feature_matrix()
+    print(f"Team: {get_team()}")
     print(f"Feature matrix: {df.shape[0]} games × {len(fcols)} features")
     print(f"Target distribution: {df[tgt].value_counts().to_dict()}")
     print(f"\nFeatures ({len(fcols)}):")

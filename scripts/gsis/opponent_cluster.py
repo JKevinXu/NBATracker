@@ -1,7 +1,7 @@
 """
 GSIS Model M3 — Opponent Archetype Classifier
 Clusters all 30 NBA teams into playing-style archetypes and maps
-each archetype to a recommended Warriors counter-strategy.
+each archetype to a recommended counter-strategy for the configured team.
 """
 
 import json, os, warnings
@@ -20,6 +20,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import seaborn as sns
+
+from scripts.gsis.team_config import get_team, load_cache
 
 warnings.filterwarnings("ignore")
 
@@ -50,7 +52,7 @@ ARCHETYPE_NAMES_MAP = {}  # filled dynamically
 
 
 def _load(name):
-    return json.loads((CACHE / f"{name}.json").read_text())
+    return load_cache(name)
 
 
 def _rs_to_df(data, idx=0):
@@ -219,8 +221,8 @@ def name_clusters(profiles, feature_cols):
 # WARRIORS' RECORD VS EACH ARCHETYPE
 # ══════════════════════════════════════════════════════════════════
 
-def warriors_vs_archetypes(profiles):
-    """Compute Warriors' record against each opponent archetype."""
+def team_vs_archetypes(profiles):
+    """Compute the configured team's record against each opponent archetype."""
     from scripts.gsis.features import _load as feat_load, _rs_to_df as feat_rs
 
     gl_data = feat_load("gamelog")
@@ -281,7 +283,7 @@ def generate_counter_strategies(profiles, vs_summary):
         tips = []
         if "Elite" in arch or "Fortress" in arch:
             tips = [
-                "Maximize Curry PnR to create mismatches",
+                "Maximize PnR to create mismatches against elite defenses",
                 "Target < 12 turnovers (elite teams capitalize on mistakes)",
                 "Slow the pace — limit transition opportunities",
             ]
@@ -339,11 +341,12 @@ def plot_cluster_map(profiles, img_dir):
                    edgecolor="white", linewidth=0.5, label=arch, alpha=0.85, zorder=5)
 
     # Label every team
+    team = get_team()
     for _, row in profiles.iterrows():
-        is_gsw = "Warriors" in row["TEAM"]
-        fontweight = "bold" if is_gsw else "normal"
-        fontsize = 10 if is_gsw else 8
-        color = GOLD if is_gsw else WHITE
+        is_our_team = row["ABBREV"] == team
+        fontweight = "bold" if is_our_team else "normal"
+        fontsize = 10 if is_our_team else 8
+        color = GOLD if is_our_team else WHITE
         ax.annotate(row["ABBREV"], (row["PCA_1"], row["PCA_2"]),
                     textcoords="offset points", xytext=(6, 4),
                     fontsize=fontsize, color=color, fontweight=fontweight)
@@ -395,8 +398,8 @@ def plot_archetype_radar(profiles, img_dir):
     plt.close(fig)
 
 
-def plot_warriors_vs_archetypes(vs_summary, img_dir):
-    """Bar chart of Warriors' record vs each archetype."""
+def plot_team_vs_archetypes(vs_summary, img_dir):
+    """Bar chart of the team's record vs each archetype."""
     vs = vs_summary.sort_values("WIN_PCT", ascending=True)
     fig, ax = plt.subplots(figsize=(10, max(4, len(vs) * 0.8)))
 
@@ -414,11 +417,11 @@ def plot_warriors_vs_archetypes(vs_summary, img_dir):
     ax.set_yticks(range(len(vs)))
     ax.set_yticklabels(vs["ARCHETYPE"].values, fontsize=10)
     ax.set_xlabel("Win %")
-    ax.set_title("Warriors' Record vs Each Opponent Archetype")
+    ax.set_title(f"{get_team()}'s Record vs Each Opponent Archetype")
     ax.axvline(50, color="white", linestyle="--", alpha=0.3)
     ax.set_xlim(0, 110)
     plt.tight_layout()
-    fig.savefig(img_dir / "warriors_vs_archetypes.png", dpi=150)
+    fig.savefig(img_dir / "team_vs_archetypes.png", dpi=150)
     plt.close(fig)
 
 
@@ -455,8 +458,9 @@ def generate_report(profiles, k, sil, vs_summary, strategies, img_dir, report_pa
     p("")
     p(f"*Generated: {datetime.now().strftime('%B %d, %Y')} | Model: K-Means Clustering (k={k}, silhouette={sil:.3f})*")
     p("")
+    team = get_team()
     p("This report classifies all 30 NBA teams into playing-style archetypes using unsupervised")
-    p("machine learning, then maps each archetype to a Warriors counter-strategy based on historical")
+    p(f"machine learning, then maps each archetype to a {team} counter-strategy based on historical")
     p("performance data.")
     p("")
     p("---")
@@ -467,7 +471,7 @@ def generate_report(profiles, k, sil, vs_summary, strategies, img_dir, report_pa
     p("")
     p("**What is this chart?** Every NBA team is plotted on a 2D map using PCA (Principal Component Analysis)")
     p("to compress 9 team-level features into two dimensions. Teams that are close together play similar styles.")
-    p(f"Colors represent the {k} discovered archetypes. The Warriors (GSW) are highlighted in gold.")
+    p(f"Colors represent the {k} discovered archetypes. {get_team()} is highlighted in gold.")
     p("")
     p("**How to read it:** Teams in the same cluster will require similar game plans. The X-axis roughly")
     p("captures offensive quality (right = better offense), while the Y-axis captures defensive quality")
@@ -500,20 +504,20 @@ def generate_report(profiles, k, sil, vs_summary, strategies, img_dir, report_pa
     p("---")
     p("")
 
-    # ── Warriors vs Archetypes ──
-    p("## 3. Warriors' Performance vs Each Archetype")
+    # ── Team vs Archetypes ──
+    p(f"## 3. {team}'s Performance vs Each Archetype")
     p("")
-    p("**How to read this chart:** Each bar shows the Warriors' win percentage against teams in that")
+    p(f"**How to read this chart:** Each bar shows {team}'s win percentage against teams in that")
     p("archetype. Green = above .500 (winning matchup), red = below .500 (losing matchup),")
     p("gold = roughly even. The record (W-L) is shown alongside each bar.")
     p("")
-    p("![Warriors vs Archetypes](figures/warriors_vs_archetypes.png)")
+    p("![Team vs Archetypes](figures/team_vs_archetypes.png)")
     p("")
 
     # ── Counter-Strategies ──
     p("## 4. Counter-Strategy Playbook")
     p("")
-    p("For each archetype, here are data-driven tactical recommendations based on the Warriors'")
+    p(f"For each archetype, here are data-driven tactical recommendations based on {team}'s")
     p("historical performance:")
     p("")
 
@@ -538,20 +542,20 @@ def generate_report(profiles, k, sil, vs_summary, strategies, img_dir, report_pa
     p("![Distribution](figures/archetype_distribution.png)")
     p("")
 
-    # ── Warriors Scouting Card ──
-    gsw = profiles[profiles["ABBREV"] == "GSW"]
-    if len(gsw) > 0:
-        gsw_row = gsw.iloc[0]
-        p("## 6. Warriors' Own Archetype")
+    # ── Team Scouting Card ──
+    our = profiles[profiles["ABBREV"] == team]
+    if len(our) > 0:
+        our_row = our.iloc[0]
+        p(f"## 6. {team}'s Own Archetype")
         p("")
-        p(f"The Warriors are classified as: **{gsw_row['ARCHETYPE']}**")
+        p(f"{team} is classified as: **{our_row['ARCHETYPE']}**")
         p("")
-        p(f"- Record: {gsw_row['WINS']}-{gsw_row['LOSSES']} ({gsw_row['WIN_PCT']:.1%})")
-        p(f"- PPG: {gsw_row['PPG']:.1f} | OPP PPG: {gsw_row['OPP_PPG']:.1f} | Net: {gsw_row['NET_PPG']:+.1f}")
+        p(f"- Record: {our_row['WINS']}-{our_row['LOSSES']} ({our_row['WIN_PCT']:.1%})")
+        p(f"- PPG: {our_row['PPG']:.1f} | OPP PPG: {our_row['OPP_PPG']:.1f} | Net: {our_row['NET_PPG']:+.1f}")
         p("")
-        p("Teams in the same archetype as the Warriors:")
-        same = profiles[profiles["ARCHETYPE"] == gsw_row["ARCHETYPE"]]
-        same = same[same["ABBREV"] != "GSW"].sort_values("WIN_PCT", ascending=False)
+        p(f"Teams in the same archetype as {team}:")
+        same = profiles[profiles["ARCHETYPE"] == our_row["ARCHETYPE"]]
+        same = same[same["ABBREV"] != team].sort_values("WIN_PCT", ascending=False)
         for _, t in same.iterrows():
             p(f"- {t['TEAM']} ({t['WINS']}-{t['LOSSES']}, {t['WIN_PCT']:.1%})")
         p("")
@@ -587,14 +591,14 @@ def run(img_dir=None, report_path=None):
     profiles, k, sil, feat_cols, km, scaler, pca = cluster_teams(profiles)
     print(f"  k={k}, silhouette={sil:.3f}")
 
-    print("  Analyzing Warriors vs archetypes …")
-    vs_summary = warriors_vs_archetypes(profiles)
+    print(f"  Analyzing {get_team()} vs archetypes …")
+    vs_summary = team_vs_archetypes(profiles)
     strategies = generate_counter_strategies(profiles, vs_summary)
 
     print("  Generating visualizations …")
     plot_cluster_map(profiles, img_dir)
     plot_archetype_radar(profiles, img_dir)
-    plot_warriors_vs_archetypes(vs_summary, img_dir)
+    plot_team_vs_archetypes(vs_summary, img_dir)
     plot_remaining_schedule(profiles, img_dir)
 
     print("  Generating report …")

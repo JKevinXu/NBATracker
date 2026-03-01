@@ -1,9 +1,10 @@
 """
 GSIS Phase 6 — Game-Day Intelligence Brief
 Integrates all five models (M1–M5) into a single actionable pre-game report.
+Now team-configurable: pass --team LAL to run for the Lakers.
 """
 
-import json, os, warnings
+import json, os, sys, warnings
 from pathlib import Path
 from datetime import datetime
 
@@ -13,6 +14,8 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+from scripts.gsis.team_config import get_team, set_team, load_cache
 
 warnings.filterwarnings("ignore")
 
@@ -31,7 +34,7 @@ plt.rcParams.update({
 
 
 def _load(name):
-    return json.loads((CACHE / f"{name}.json").read_text())
+    return load_cache(name)
 
 def _rs_to_df(data, idx=0):
     rs = data.get("resultSets", data)
@@ -81,11 +84,12 @@ def run_all_models():
     from scripts.gsis.player_forecast import run as run_m4
     from scripts.gsis.lineup_optimizer import run as run_m2
 
+    team = get_team()
     img_dir = ROOT / "reports" / "game_briefs" / "figures"
     os.makedirs(img_dir, exist_ok=True)
 
     print("=" * 60)
-    print("GSIS — Game-Day Intelligence Brief Generator")
+    print(f"GSIS — Game-Day Intelligence Brief Generator ({team})")
     print("=" * 60)
     print()
 
@@ -142,6 +146,7 @@ def run_all_models():
 
 def generate_brief(models_output, img_dir, report_path):
     """Generate the unified Game-Day Intelligence Brief."""
+    team = get_team()
     game_info = get_next_opponent()
     opp = game_info["opponent"]
     date = game_info["date"]
@@ -151,10 +156,10 @@ def generate_brief(models_output, img_dir, report_path):
     p = md.append
 
     p(f"# 🏀 GSIS Game-Day Intelligence Brief")
-    p(f"## Warriors {'vs.' if game_info['home'] else '@'} {opp} — {date}")
+    p(f"## {team} {'vs.' if game_info['home'] else '@'} {opp} — {date}")
     p("")
     p(f"*Generated: {datetime.now().strftime('%B %d, %Y %H:%M')} | System: Game Strategy Intelligence System (GSIS)*")
-    p(f"*Venue: {venue} | Models: 5 interconnected ML systems | Data: stats.nba.com 2025-26*")
+    p(f"*Team: {team} | Venue: {venue} | Models: 5 interconnected ML systems*")
     p("")
     p("---")
     p("")
@@ -239,7 +244,7 @@ def generate_brief(models_output, img_dir, report_path):
     p("See the full scouting report for this opponent's archetype, profile, and recommended")
     p("counter-strategies.")
     p("")
-    p("![Archetype Map](figures/opponent_pca_clusters.png)")
+    p("![Archetype Map](figures/opponent_cluster_map.png)")
     p("")
 
     # ══════════ M2: LINEUP ══════════
@@ -377,7 +382,7 @@ def generate_brief(models_output, img_dir, report_path):
     p("---")
     p("")
     p(f"*GSIS v1.0 — {datetime.now().strftime('%B %d, %Y')} | 5 Models | "
-      f"{datetime.now().strftime('%H:%M')} | Golden State Warriors*")
+      f"{datetime.now().strftime('%H:%M')} | {team}*")
 
     report_path.write_text("\n".join(md))
     print(f"  📄 Game-Day Brief: {report_path}")
@@ -387,22 +392,36 @@ def generate_brief(models_output, img_dir, report_path):
 # MAIN
 # ══════════════════════════════════════════════════════════════════
 
-def run():
+def run(team=None):
+    if team:
+        set_team(team)
+
+    team_abbrev = get_team()
     img_dir = ROOT / "reports" / "game_briefs" / "figures"
-    report_path = ROOT / "reports" / "game_briefs" / "game_day_brief.md"
+    report_path = ROOT / "reports" / "game_briefs" / f"game_day_brief_{team_abbrev.lower()}.md"
     os.makedirs(img_dir, exist_ok=True)
 
     models_output = run_all_models()
 
     print("=" * 60)
-    print("Phase 6: Generating unified Game-Day Intelligence Brief")
+    print(f"Phase 6: Generating unified Game-Day Brief ({team_abbrev})")
     print("=" * 60)
     generate_brief(models_output, img_dir, report_path)
     print()
-    print("✅ GSIS complete — all 5 models + unified brief generated.")
+    print(f"✅ GSIS complete — all 5 models + unified brief generated for {team_abbrev}.")
 
 
 if __name__ == "__main__":
-    import sys
     sys.path.insert(0, str(ROOT))
-    run()
+
+    # Parse --team argument
+    team = "GSW"  # default
+    for i, arg in enumerate(sys.argv[1:], 1):
+        if arg == "--team" and i < len(sys.argv):
+            team = sys.argv[i + 1].upper()
+        elif arg.startswith("--team="):
+            team = arg.split("=")[1].upper()
+        elif len(arg) == 3 and arg.isalpha():
+            team = arg.upper()
+
+    run(team)

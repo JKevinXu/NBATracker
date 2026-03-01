@@ -19,19 +19,22 @@ stat show the trend (↑ = L5 avg > season avg, ↓ = below, → = stable).
 
 | Player | PTS | REB | AST | FG% | PTS Trend |
 |---|---|---|---|---|---|
-| Stephen Curry | **23.0** [22–36] | 1.5 [1–5] | 2.3 [2–6] | 50.0% | → |
-| De'Anthony Melton | **17.1** [6–18] | 3.1 [3–5] | 1.3 [0–2] | 40.0% | ↑ |
-| Jimmy Butler III | **16.9** [15–22] | 3.5 [3–7] | 4.6 [3–5] | 50.0% | ↑ |
-| Will Richard | **16.8** [3–17] | 4.6 [0–5] | 1.8 [0–2] | 50.0% | ↓ |
-| Gui Santos | **15.6** [9–17] | 5.4 [1–6] | 2.2 [1–3] | 50.0% | ↑ |
-| Gary Payton II | **13.0** [6–14] | 2.8 [1–5] | 2.1 [1–4] | 60.0% | ↑ |
-| Brandin Podziemski | **11.8** [7–13] | 6.6 [4–7] | 5.5 [2–6] | 50.0% | → |
-| Moses Moody | **11.1** [8–14] | 3.1 [2–4] | 1.9 [1–4] | 40.0% | ↑ |
-| Quinten Post | **10.2** [8–12] | 3.3 [3–4] | 2.0 [0–2] | 50.0% | ↓ |
-| Pat Spencer | **4.9** [0–9] | 2.2 [1–4] | 5.8 [2–7] | 40.0% | ↑ |
-| Al Horford | **4.8** [5–8] | 7.2 [3–8] | 3.9 [2–4] | 40.0% | ↑ |
-| Draymond Green | **1.1** [0–13] | 3.0 [2–5] | 2.8 [3–5] | 30.0% | ↑ |
-| Kristaps Porziņģis | — | — | — | — | → |
+| LeBron James | **16.1** [15–25] | 5.8 [3–7] | 4.9 [4–6] | 50.0% | → |
+| Austin Reaves | **15.6** [9–20] | 2.9 [1–4] | 2.4 [2–4] | 40.0% | ↑ |
+| Jake LaRavia | **11.4** [5–15] | 5.2 [2–5] | 1.2 [0–2] | 40.0% | ↓ |
+| Marcus Smart | **11.4** [3–14] | 1.0 [0–3] | 2.9 [1–4] | 40.0% | ↓ |
+| Luke Kennard | **8.3** [8–9] | 2.9 [1–3] | 0.4 [0–3] | 60.0% | ↑ |
+| Jaxson Hayes | **5.5** [3–9] | 6.5 [4–8] | 1.2 [0–2] | 70.0% | ↑ |
+| Deandre Ayton | **5.0** [2–17] | 4.3 [4–10] | 0.6 [0–2] | 40.0% | ↓ |
+| Bronny James | **0.9** [0–2] | 0.2 [0–0] | 0.1 [0–1] | 10.0% | ↓ |
+| Rui Hachimura | **0.9** [0–14] | 1.2 [0–2] | 0.2 [0–1] | 30.0% | ↓ |
+| Jarred Vanderbilt | **0.6** [0–6] | 2.4 [0–4] | 0.2 [0–2] | 20.0% | ↓ |
+| Dalton Knecht | **0.2** [0–5] | 0.1 [0–2] | 0.1 [0–1] | 10.0% | ↓ |
+| Adou Thiero | **0.0** [0–0] | 0.0 [0–0] | 0.0 [0–0] | -0.0% | ↓ |
+| Drew Timme | — | — | — | — | → |
+| Luka Dončić | — | — | — | — | → |
+| Maxi Kleber | **0.0** [0–0] | 0.2 [0–2] | 0.1 [0–1] | 10.0% | ↓ |
+| Nick Smith Jr. | — | — | — | — | → |
 
 ## 2. Scoring Trends + Forecast
 
@@ -54,20 +57,22 @@ predictions are off by ±6 points on average. For FG%, divide by 100 (MAE of 0.0
 
 ### 🔥 Hot Streaks (L5 > Season Average)
 
-- **Gui Santos**: L5 avg 15.0 vs season 6.0 (**+9.0**) — forecast: 15.6
-- **Pat Spencer**: L5 avg 13.0 vs season 6.3 (**+6.7**) — forecast: 4.9
-- **Gary Payton II**: L5 avg 11.8 vs season 5.4 (**+6.4**) — forecast: 13.0
-- **Moses Moody**: L5 avg 14.8 vs season 11.5 (**+3.3**) — forecast: 11.1
-- **Jimmy Butler III**: L5 avg 22.0 vs season 20.0 (**+2.0**) — forecast: 16.9
-- **De'Anthony Melton**: L5 avg 13.4 vs season 11.9 (**+1.5**) — forecast: 17.1
-- **Al Horford**: L5 avg 8.8 vs season 7.5 (**+1.3**) — forecast: 4.8
-- **Draymond Green**: L5 avg 9.0 vs season 8.4 (**+0.6**) — forecast: 1.1
+- **Austin Reaves**: L5 avg 18.8 vs season 13.6 (**+5.2**) — forecast: 15.6
+- **Luke Kennard**: L5 avg 8.8 vs season 7.2 (**+1.6**) — forecast: 8.3
+- **Jaxson Hayes**: L5 avg 6.4 vs season 5.6 (**+0.8**) — forecast: 5.5
 
 ### ⚠️ Cold Streaks (L5 < Season Average)
 
-- **Quinten Post**: L5 avg 4.4 vs season 7.7 (**-3.3**) — forecast: 10.2
-- **Will Richard**: L5 avg 6.0 vs season 6.8 (**-0.8**) — forecast: 16.8
+- **Dalton Knecht**: L5 avg 0.0 vs season 3.4 (**-3.4**) — forecast: 0.2
+- **Deandre Ayton**: L5 avg 8.0 vs season 11.2 (**-3.2**) — forecast: 5.0
+- **Jake LaRavia**: L5 avg 6.4 vs season 9.2 (**-2.8**) — forecast: 11.4
+- **Rui Hachimura**: L5 avg 7.8 vs season 9.5 (**-1.7**) — forecast: 0.9
+- **Jarred Vanderbilt**: L5 avg 2.4 vs season 4.1 (**-1.7**) — forecast: 0.6
+- **Marcus Smart**: L5 avg 6.4 vs season 7.9 (**-1.5**) — forecast: 11.4
+- **Bronny James**: L5 avg 0.0 vs season 1.1 (**-1.1**) — forecast: 0.9
+- **Maxi Kleber**: L5 avg 1.0 vs season 1.3 (**-0.3**) — forecast: 0.0
+- **Adou Thiero**: L5 avg 0.4 vs season 0.6 (**-0.2**) — forecast: 0.0
 
 ---
-*Models: 13 players × 4 stats = 52 individual XGBoost models*
+*Models: 16 players × 4 stats = 64 individual XGBoost models*
 *Generated: March 01, 2026 | Data: stats.nba.com 2025-26*

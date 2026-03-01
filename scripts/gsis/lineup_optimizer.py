@@ -20,6 +20,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from scripts.gsis.team_config import get_team, load_cache
+
 warnings.filterwarnings("ignore")
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -37,7 +39,7 @@ plt.rcParams.update({
 
 
 def _load(name):
-    return json.loads((CACHE / f"{name}.json").read_text())
+    return load_cache(name)
 
 def _rs_to_df(data, idx=0):
     rs = data.get("resultSets", data)
@@ -49,10 +51,11 @@ def _rs_to_df(data, idx=0):
 # ══════════════════════════════════════════════════════════════════
 
 def load_lineups():
-    """Load Warriors 5-man lineup data."""
+    """Load 5-man lineup data for the configured team."""
+    team = get_team()
     lu = _load("lineups")
     df = _rs_to_df(lu)
-    df = df[df["TEAM_ABBREVIATION"] == "GSW"].copy()
+    df = df[df["TEAM_ABBREVIATION"] == team].copy()
     for c in ["MIN", "NET_RATING", "OFF_RATING", "DEF_RATING", "PACE",
               "EFG_PCT", "TS_PCT", "PIE", "GP", "W", "L", "W_PCT", "POSS"]:
         df[c] = pd.to_numeric(df.get(c, 0), errors="coerce").fillna(0)
@@ -65,13 +68,22 @@ def load_lineups():
 
 
 def get_roster():
-    """Get current Warriors rotation players (≥15 GP)."""
-    lb = _load("league_base")
-    base = _rs_to_df(lb)
-    base = base[base["TEAM_ABBREVIATION"] == "GSW"]
-    base["GP"] = pd.to_numeric(base["GP"], errors="coerce")
-    roster = base[base["GP"] >= 15][["PLAYER_NAME", "GP"]].to_dict("records")
-    return [r["PLAYER_NAME"] for r in roster]
+    """Get current rotation players (≥15 GP) for the configured team."""
+    team = get_team()
+    try:
+        lb = _load("league_base")
+        base = _rs_to_df(lb)
+        base = base[base["TEAM_ABBREVIATION"] == team]
+        base["GP"] = pd.to_numeric(base["GP"], errors="coerce")
+        roster = base[base["GP"] >= 15][["PLAYER_NAME", "GP"]].to_dict("records")
+        return [r["PLAYER_NAME"] for r in roster]
+    except FileNotFoundError:
+        # Derive from player gamelogs
+        pg = _load("player_gamelogs")
+        df = _rs_to_df(pg)
+        df = df[df["TEAM_ABBREVIATION"] == team]
+        gp = df.groupby("PLAYER_NAME")["GAME_ID"].nunique()
+        return gp[gp >= 15].index.tolist()
 
 
 def shorten(name):

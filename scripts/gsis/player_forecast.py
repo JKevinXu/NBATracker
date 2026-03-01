@@ -19,6 +19,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from scripts.gsis.team_config import get_team, load_cache
+
 warnings.filterwarnings("ignore")
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -37,7 +39,7 @@ plt.rcParams.update({
 
 
 def _load(name):
-    return json.loads((CACHE / f"{name}.json").read_text())
+    return load_cache(name)
 
 def _rs_to_df(data, idx=0):
     rs = data.get("resultSets", data)
@@ -54,22 +56,30 @@ NUM_COLS = ["MIN", "FGM", "FGA", "FG_PCT", "FG3M", "FG3A", "FG3_PCT",
             "TOV", "STL", "BLK", "PTS", "PLUS_MINUS"]
 
 def load_player_games():
-    """Load per-game player data for Warriors rotation players."""
+    """Load per-game player data for rotation players."""
+    team = get_team()
     pg = _load("player_gamelogs")
     df = _rs_to_df(pg)
-    df = df[df["TEAM_ABBREVIATION"] == "GSW"].copy()
+    df = df[df["TEAM_ABBREVIATION"] == team].copy()
     df["DATE"] = pd.to_datetime(df["GAME_DATE"])
     for c in NUM_COLS:
-        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
 
-    # Ages
-    lb = _load("league_base")
-    base = _rs_to_df(lb)
-    base = base[base["TEAM_ABBREVIATION"] == "GSW"]
-    age_map = dict(zip(base["PLAYER_NAME"], pd.to_numeric(base["AGE"], errors="coerce")))
-    gp_map = dict(zip(base["PLAYER_NAME"], pd.to_numeric(base["GP"], errors="coerce")))
-    df["AGE"] = df["PLAYER_NAME"].map(age_map)
-    df["GP_SEASON"] = df["PLAYER_NAME"].map(gp_map)
+    # Ages & GP
+    try:
+        lb = _load("league_base")
+        base = _rs_to_df(lb)
+        base = base[base["TEAM_ABBREVIATION"] == team]
+        age_map = dict(zip(base["PLAYER_NAME"], pd.to_numeric(base["AGE"], errors="coerce")))
+        gp_map = dict(zip(base["PLAYER_NAME"], pd.to_numeric(base["GP"], errors="coerce")))
+    except FileNotFoundError:
+        # Derive from player gamelogs
+        gp_map = df.groupby("PLAYER_NAME")["GAME_ID"].nunique().to_dict()
+        age_map = {n: 25 for n in gp_map}
+
+    df["AGE"] = df["PLAYER_NAME"].map(age_map).fillna(25)
+    df["GP_SEASON"] = df["PLAYER_NAME"].map(gp_map).fillna(0)
 
     # Filter to rotation players (≥15 GP)
     rotation = [p for p, gp in gp_map.items() if gp >= 15]

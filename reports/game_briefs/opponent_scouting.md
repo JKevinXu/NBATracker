@@ -3,7 +3,7 @@
 *Generated: March 01, 2026 | Model: K-Means Clustering (k=3, silhouette=0.251)*
 
 This report classifies all 30 NBA teams into playing-style archetypes using unsupervised
-machine learning, then maps each archetype to a Warriors counter-strategy based on historical
+machine learning, then maps each archetype to a LAL counter-strategy based on historical
 performance data.
 
 ---
@@ -12,7 +12,7 @@ performance data.
 
 **What is this chart?** Every NBA team is plotted on a 2D map using PCA (Principal Component Analysis)
 to compress 9 team-level features into two dimensions. Teams that are close together play similar styles.
-Colors represent the 3 discovered archetypes. The Warriors (GSW) are highlighted in gold.
+Colors represent the 3 discovered archetypes. LAL is highlighted in gold.
 
 **How to read it:** Teams in the same cluster will require similar game plans. The X-axis roughly
 captures offensive quality (right = better offense), while the Y-axis captures defensive quality
@@ -48,22 +48,22 @@ Avg: 112.8 PPG | 119.6 OPP PPG | Net: -7.0 | Win%: 29.4%
 
 ---
 
-## 3. Warriors' Performance vs Each Archetype
+## 3. LAL's Performance vs Each Archetype
 
-**How to read this chart:** Each bar shows the Warriors' win percentage against teams in that
+**How to read this chart:** Each bar shows LAL's win percentage against teams in that
 archetype. Green = above .500 (winning matchup), red = below .500 (losing matchup),
 gold = roughly even. The record (W-L) is shown alongside each bar.
 
-![Warriors vs Archetypes](figures/warriors_vs_archetypes.png)
+![Team vs Archetypes](figures/team_vs_archetypes.png)
 
 ## 4. Counter-Strategy Playbook
 
-For each archetype, here are data-driven tactical recommendations based on the Warriors'
+For each archetype, here are data-driven tactical recommendations based on LAL's
 historical performance:
 
 ### 🔥 Leaky Offense
 
-**Record:** 11-3 (79%) — ✅ Strong
+**Record:** 15-1 (94%) — ✅ Strong
 
 **Counter-Strategy:**
 1. Match their pace with uptempo play
@@ -74,7 +74,7 @@ historical performance:
 
 ### 🎯 High-Octane Offense
 
-**Record:** 13-14 (48%) — ⚠️ Neutral
+**Record:** 13-12 (52%) — ⚠️ Neutral
 
 **Counter-Strategy:**
 1. Match their pace with uptempo play
@@ -85,10 +85,10 @@ historical performance:
 
 ### 🏃 Elite Powerhouse
 
-**Record:** 5-10 (33%) — ❌ Struggling
+**Record:** 4-10 (29%) — ❌ Struggling
 
 **Counter-Strategy:**
-1. Maximize Curry PnR to create mismatches
+1. Maximize PnR to create mismatches against elite defenses
 2. Target < 12 turnovers (elite teams capitalize on mistakes)
 3. Slow the pace — limit transition opportunities
 
@@ -98,21 +98,21 @@ historical performance:
 
 ![Distribution](figures/archetype_distribution.png)
 
-## 6. Warriors' Own Archetype
+## 6. LAL's Own Archetype
 
-The Warriors are classified as: **🎯 High-Octane Offense**
+LAL is classified as: **🎯 High-Octane Offense**
 
-- Record: 29-27 (51.8%)
-- PPG: 115.0 | OPP PPG: 114.0 | Net: +2.0
+- Record: 33-21 (61.1%)
+- PPG: 116.0 | OPP PPG: 116.0 | Net: +0.0
 
-Teams in the same archetype as the Warriors:
+Teams in the same archetype as LAL:
 - New York Knicks (35-21, 62.5%)
-- Los Angeles Lakers (33-21, 61.1%)
 - Toronto Raptors (33-23, 58.9%)
 - Phoenix Suns (32-24, 57.1%)
 - Philadelphia 76ers (30-25, 54.5%)
 - Orlando Magic (29-25, 53.7%)
 - Miami Heat (29-27, 51.8%)
+- Golden State Warriors (29-27, 51.8%)
 - LA Clippers (27-28, 49.1%)
 - Portland Trail Blazers (27-29, 48.2%)
 - Atlanta Hawks (27-30, 47.4%)

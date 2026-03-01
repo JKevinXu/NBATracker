@@ -17,34 +17,34 @@ green = offensive rating, red = defensive rating. Higher net = more dominant.
 
 ### 🏀 Best Overall Lineup
 
-**De'Anthony Melton — Gary Payton II — Gui Santos — Kristaps Porziņģis — Moses Moody**
-- Predicted Net Rating: **+77.3**
-- Off Rating: 161.5 | Def Rating: 79.8
+**Austin Reaves — Dalton Knecht — Jake LaRavia — Jaxson Hayes — Maxi Kleber**
+- Predicted Net Rating: **+29.4**
+- Off Rating: 123.9 | Def Rating: 96.1
 
 ### 🛡️ Best Defensive Lineup
 
-**Brandin Podziemski — De'Anthony Melton — Gary Payton II — Gui Santos — Moses Moody**
-- Def Rating: **77.3** | Net Rating: +62.1
+**Austin Reaves — Dalton Knecht — Jaxson Hayes — Marcus Smart — Maxi Kleber**
+- Def Rating: **96.0** | Net Rating: +29.0
 
 ### 🔥 Best Offensive Lineup
 
-**De'Anthony Melton — Gui Santos — Jimmy Butler III — Kristaps Porziņģis — Pat Spencer**
-- Off Rating: **173.8** | Net Rating: +72.4
+**Austin Reaves — Dalton Knecht — Jaxson Hayes — Marcus Smart — Maxi Kleber**
+- Off Rating: **124.0** | Net Rating: +29.0
 
 ### Complete Top-10 Rankings
 
 | Rank | Lineup | Net | Off | Def |
 |---|---|---|---|---|
-| 1 | Melton, II, Santos, Porziņģis, Moody | +77.3 | 161.5 | 79.8 |
-| 2 | Podziemski, Melton, II, Santos, Porziņģis | +74.8 | 160.0 | 91.6 |
-| 3 | Melton, II, Santos, Porziņģis, Spencer | +74.6 | 172.1 | 96.9 |
-| 4 | Melton, II, Santos, III, Porziņģis | +74.5 | 170.1 | 91.1 |
-| 5 | Melton, II, Porziņģis, Moody, Richard | +73.2 | 162.1 | 85.4 |
-| 6 | Podziemski, Melton, Santos, III, Porziņģis | +73.0 | 161.7 | 79.8 |
-| 7 | Melton, Santos, III, Porziņģis, Moody | +72.4 | 168.2 | 87.2 |
-| 8 | Melton, Santos, III, Porziņģis, Spencer | +72.4 | 173.8 | 95.0 |
-| 9 | Podziemski, Melton, Santos, Porziņģis, Moody | +70.9 | 157.8 | 83.8 |
-| 10 | Podziemski, Melton, Santos, III, Moody | +70.8 | 143.5 | 79.5 |
+| 1 | Reaves, Knecht, LaRavia, Hayes, Kleber | +29.4 | 123.9 | 96.1 |
+| 2 | Reaves, Knecht, Hayes, Smart, Kleber | +29.0 | 124.0 | 96.0 |
+| 3 | Thiero, Reaves, Knecht, Hayes, Smart | +28.8 | 123.8 | 96.2 |
+| 4 | Reaves, Knecht, Timme, Hayes, Smart | +28.8 | 123.8 | 96.2 |
+| 5 | Reaves, Knecht, Hayes, Dončić, Smart | +28.8 | 123.8 | 96.2 |
+| 6 | Reaves, Knecht, Hayes, Smart, Jr. | +28.8 | 123.8 | 96.2 |
+| 7 | Thiero, Reaves, Knecht, LaRavia, Hayes | +28.7 | 123.8 | 96.2 |
+| 8 | Reaves, Knecht, Timme, LaRavia, Hayes | +28.7 | 123.8 | 96.2 |
+| 9 | Reaves, Knecht, LaRavia, Hayes, Dončić | +28.7 | 123.8 | 96.2 |
+| 10 | Reaves, Knecht, LaRavia, Hayes, Jr. | +28.7 | 123.8 | 96.2 |
 
 ## 2. Player Impact on Lineup Quality
 
@@ -62,9 +62,9 @@ the model captures.
 
 ![Observed vs Predicted](figures/lineup_obs_pred.png)
 
-- **Training R²:** 0.512
-- **CV MAE:** 40.1
-- **Lineups in training data:** 159
+- **Training R²:** 0.665
+- **CV MAE:** 26.0
+- **Lineups in training data:** 38
 
 ## 4. Best Player Pairings
 

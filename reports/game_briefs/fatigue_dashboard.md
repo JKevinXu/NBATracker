@@ -21,23 +21,22 @@ red = critical (> 70). Player age is shown in parentheses.
 
 | Player | Age | Fatigue | L3 Avg Min | Rest Days | Recommendation |
 |---|---|---|---|---|---|
-| Stephen Curry | 37 | **69** | 30.0 | 2 | 🟠 Limit to 25 min |
-| Seth Curry | 35 | **64** | 17.9 | 2 | 🟠 Limit to 12 min |
-| Pat Spencer | 29 | **61** | 30.2 | 8 | 🟠 Limit to 12 min |
-| Gui Santos | 23 | **60** | 28.6 | 8 | 🟠 Limit to 12 min |
-| Jimmy Butler III | 36 | **56** | 30.7 | 4 | 🟠 Limit to 24 min |
-| Al Horford | 39 | **54** | 25.1 | 8 | 🟡 Normal (20 min) |
-| Gary Payton II | 33 | **52** | 18.8 | 8 | 🟡 Normal (13 min) |
-| Jonathan Kuminga | 25 | **49** | 17.4 | 2 | 🟡 Normal (20 min) |
-| Draymond Green | 35 | **47** | 28.9 | 8 | 🟡 Normal (26 min) |
-| Moses Moody | 23 | **46** | 34.0 | 8 | 🟡 Normal (25 min) |
-| Buddy Hield | 25 | **45** | 21.1 | 4 | 🟡 Normal (20 min) |
-| Brandin Podziemski | 22 | **43** | 33.8 | 8 | 🟡 Normal (26 min) |
-| Quinten Post | 25 | **40** | 5.1 | 2 | 🟡 Normal (17 min) |
-| De'Anthony Melton | 27 | **38** | 24.7 | 8 | 🟢 Full workload (24 min max) |
-| Kristaps Porziņģis | 30 | **38** | 23.9 | 3 | 🟢 Full workload (26 min max) |
-| Will Richard | 23 | **31** | 17.5 | 10 | 🟢 Full workload (22 min max) |
-| Trayce Jackson-Davis | 25 | **21** | 9.2 | 6 | 🟢 Full workload (23 min max) |
+| Luka DonÄiÄ | 25 | **88** | 36.1 | 2 | 🔴 REST or hard cap at 12 min |
+| LeBron James | 41 | **79** | 33.2 | 2 | 🔴 REST or hard cap at 19 min |
+| Deandre Ayton | 27 | **63** | 28.2 | 2 | 🟠 Limit to 22 min |
+| Marcus Smart | 31 | **63** | 25.1 | 2 | 🟠 Limit to 22 min |
+| Austin Reaves | 27 | **61** | 33.3 | 2 | 🟠 Limit to 26 min |
+| Luke Kennard | 29 | **59** | 18.2 | 2 | 🟠 Limit to 16 min |
+| Rui Hachimura | 28 | **57** | 24.6 | 2 | 🟠 Limit to 23 min |
+| Jake LaRavia | 24 | **53** | 18.0 | 2 | 🟡 Normal (26 min) |
+| Maxi Kleber | 34 | **49** | 4.6 | 2 | 🟡 Normal (11 min) |
+| Jarred Vanderbilt | 26 | **48** | 11.0 | 2 | 🟡 Normal (19 min) |
+| Jaxson Hayes | 25 | **40** | 5.5 | 2 | 🟢 Full workload (20 min max) |
+| Dalton Knecht | 24 | **32** | 1.1 | 2 | 🟢 Full workload (14 min max) |
+| Kobe Bufkin | 22 | **32** | 1.1 | 2 | 🟢 Full workload (14 min max) |
+| Nick Smith Jr.  (TW) | 25 | **29** | 0.0 | 2 | 🟢 Full workload (23 min max) |
+| Drew Timme  (TW) | 25 | **28** | 0.0 | 2 | 🟢 Full workload (23 min max) |
+| Chris MaÃ±on  (TW) | 25 | **28** | 0.0 | 2 | 🟢 Full workload (23 min max) |
 
 ## 2. Fatigue Component Breakdown
 
@@ -77,18 +76,18 @@ fatigue has minimal impact on this metric.
 
 ### 4.1 Ridge Regression Calibration
 
-A Ridge Regression model (R² = 0.049) quantifies which fatigue components most predict
+A Ridge Regression model (R² = 0.213) quantifies which fatigue components most predict
 scoring performance drops:
 
 | Fatigue Component | Coefficient | Interpretation |
 |---|---|---|
-| Minutes Load | +4.547 | ↑ scoring per unit increase |
-| Schedule Density | -1.526 | ↓ scoring per unit increase |
-| Rest Penalty | +1.297 | ↑ scoring per unit increase |
-| Cumulative Load | +0.875 | ↑ scoring per unit increase |
-| Age Factor | +0.431 | ↑ scoring per unit increase |
+| Minutes Load | +8.910 | ↑ scoring per unit increase |
+| Cumulative Load | -1.374 | ↓ scoring per unit increase |
+| Schedule Density | +1.198 | ↑ scoring per unit increase |
+| Rest Penalty | -0.957 | ↓ scoring per unit increase |
+| Age Factor | -0.940 | ↓ scoring per unit increase |
 
-> *R² = 0.049 means the fatigue model explains 4.9% of the variance in scoring*
+> *R² = 0.213 means the fatigue model explains 21.3% of the variance in scoring*
 > *deviations from season averages.*
 
 ## 5. Rest Day Impact by Age Group
@@ -105,20 +104,18 @@ the coaching staff should prioritize resting veterans on back-to-backs.
 
 ### ⚠️ Immediate Attention Required
 
-- **Stephen Curry** (age 37, fatigue: 69) — 🟠 Limit to 25 min
-- **Seth Curry** (age 35, fatigue: 64) — 🟠 Limit to 12 min
-- **Pat Spencer** (age 29, fatigue: 61) — 🟠 Limit to 12 min
-- **Gui Santos** (age 23, fatigue: 60) — 🟠 Limit to 12 min
-- **Jimmy Butler III** (age 36, fatigue: 56) — 🟠 Limit to 24 min
+- **Luka DonÄiÄ** (age 25, fatigue: 88) — 🔴 REST or hard cap at 12 min
+- **LeBron James** (age 41, fatigue: 79) — 🔴 REST or hard cap at 19 min
+- **Deandre Ayton** (age 27, fatigue: 63) — 🟠 Limit to 22 min
+- **Marcus Smart** (age 31, fatigue: 63) — 🟠 Limit to 22 min
+- **Austin Reaves** (age 27, fatigue: 61) — 🟠 Limit to 26 min
+- **Luke Kennard** (age 29, fatigue: 59) — 🟠 Limit to 16 min
+- **Rui Hachimura** (age 28, fatigue: 57) — 🟠 Limit to 23 min
 
 ### 🧓 Veteran Management Plan
 
-- **Al Horford** (age 39, 20.8 mpg): Consider capping at 17 min on B2Bs; rest 1 in every 5 B2B games
-- **Stephen Curry** (age 37, 31.3 mpg): Consider capping at 26 min on B2Bs; rest 1 in every 5 B2B games
-- **Jimmy Butler III** (age 36, 31.1 mpg): Consider capping at 26 min on B2Bs; rest 1 in every 5 B2B games
-- **Seth Curry** (age 35, 16.0 mpg): Consider capping at 13 min on B2Bs; rest 1 in every 5 B2B games
-- **Draymond Green** (age 35, 26.5 mpg): Consider capping at 22 min on B2Bs; rest 1 in every 5 B2B games
-- **Gary Payton II** (age 33, 13.2 mpg): Consider capping at 11 min on B2Bs; rest 1 in every 5 B2B games
+- **LeBron James** (age 41, 33.3 mpg): Consider capping at 28 min on B2Bs; rest 1 in every 5 B2B games
+- **Maxi Kleber** (age 34, 11.5 mpg): Consider capping at 9 min on B2Bs; rest 1 in every 5 B2B games
 
 ### 📋 General Principles
 

@@ -11,8 +11,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import TimeSeriesSplit, cross_val_predict
-from sklearn.calibration import CalibratedClassifierCV
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import (
     accuracy_score, log_loss, roc_auc_score, brier_score_loss,
 )
@@ -91,21 +90,21 @@ FRIENDLY = {
     "H2H_PTS_DIFF": "H2H Pts Diff",
     "H2H_GAMES": "H2H Games Played",
     "SEASON_MEETING_NUM": "Meeting # This Season",
-    "CURRY_AVAILABLE": "Curry Available",
-    "BUTLER_AVAILABLE": "Butler Available",
-    "MELTON_AVAILABLE": "Melton Available",
-    "GREEN_AVAILABLE": "Green Available",
-    "KUMINGA_AVAILABLE": "Kuminga Available",
-    "CURRY_FATIGUE": "Curry Fatigue (L3 min)",
-    "BUTLER_FATIGUE": "Butler Fatigue (L3 min)",
-    "MELTON_FATIGUE": "Melton Fatigue (L3 min)",
-    "GREEN_FATIGUE": "Green Fatigue (L3 min)",
-    "KUMINGA_FATIGUE": "Kuminga Fatigue (L3 min)",
 }
 
 
 def friendly(col):
-    return FRIENDLY.get(col, col)
+    """Return a friendly name for a feature column, auto-detecting player names."""
+    if col in FRIENDLY:
+        return FRIENDLY[col]
+    # Auto-detect player AVAILABLE/FATIGUE columns
+    if col.endswith("_AVAILABLE"):
+        name = col.replace("_AVAILABLE", "").replace("_", " ").title()
+        return f"{name} Available"
+    if col.endswith("_FATIGUE"):
+        name = col.replace("_FATIGUE", "").replace("_", " ").title()
+        return f"{name} Fatigue (L3 min)"
+    return col
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -146,7 +145,7 @@ class PreGamePredictor:
         y_arr = y.values.astype(int)
         n = len(y_arr)
 
-    # Scale for logistic regression
+        # Scale for logistic regression
         X_scaled = self.scaler.fit_transform(X_arr)
 
         # ── Manual OOF with TimeSeriesSplit ──
