@@ -144,22 +144,27 @@ class PreGamePredictor:
         self.feature_cols = feature_cols
         X_arr = X[feature_cols].values.astype(float)
         y_arr = y.values.astype(int)
+        n = len(y_arr)
 
     # Scale for logistic regression
         X_scaled = self.scaler.fit_transform(X_arr)
 
-        # ── Time-series cross-val to generate meta-features ──
+        # ── Manual OOF with TimeSeriesSplit ──
         tscv = TimeSeriesSplit(n_splits=5)
+        xgb_oof = np.full(n, 0.5)
+        lgb_oof = np.full(n, 0.5)
+        lr_oof = np.full(n, 0.5)
 
-        xgb_oof = cross_val_predict(
-            self.xgb_model, X_arr, y_arr, cv=tscv, method="predict_proba"
-        )[:, 1]
-        lgb_oof = cross_val_predict(
-            self.lgb_model, X_arr, y_arr, cv=tscv, method="predict_proba"
-        )[:, 1]
-        lr_oof = cross_val_predict(
-            self.lr_model, X_scaled, y_arr, cv=tscv, method="predict_proba"
-        )[:, 1]
+        for train_idx, val_idx in tscv.split(X_arr):
+            # XGBoost
+            self.xgb_model.fit(X_arr[train_idx], y_arr[train_idx])
+            xgb_oof[val_idx] = self.xgb_model.predict_proba(X_arr[val_idx])[:, 1]
+            # LightGBM
+            self.lgb_model.fit(X_arr[train_idx], y_arr[train_idx])
+            lgb_oof[val_idx] = self.lgb_model.predict_proba(X_arr[val_idx])[:, 1]
+            # Logistic Regression
+            self.lr_model.fit(X_scaled[train_idx], y_arr[train_idx])
+            lr_oof[val_idx] = self.lr_model.predict_proba(X_scaled[val_idx])[:, 1]
 
         # ── Train meta-learner on OOF predictions ──
         meta_X = np.column_stack([xgb_oof, lgb_oof, lr_oof])
@@ -240,20 +245,18 @@ class PreGamePredictor:
 # VISUALIZATION
 # ══════════════════════════════════════════════════════════════════
 
-def plot_model_comparison(metrics: dict, img_dir):
+def plot_model_comparison(metrics, img_dir):
     """Bar chart comparing base models vs ensemble."""
-fig, ax = plt.subplots(figsize=(10, 5))
-    models = ["XGBoost", "LightGBM", "Logistic Reg", "Stacked\nEnsemble"]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    model_names = ["XGBoost", "LightGBM", "Logistic Reg", "Stacked\nEnsemble"]
     accs = [
-        metrics["xgb_accuracy"] * 100,
-        metrics["lgb_accuracy"] * 100,
-        metrics["lr_accuracy"] * 100,
-        metrics["accuracy"] * 100,
+        metrics["xgb_accuracy"] * 100, metrics["lgb_accuracy"] * 100,
+        metrics["lr_accuracy"] * 100, metrics["accuracy"] * 100,
     ]
     colors = [BLUE, "#2ecc71", "#e67e22", GOLD]
-    bars = ax.bar(models, accs, color=colors, edgecolor="white", linewidth=0.5, width=0.6)
+    bars = ax.bar(model_names, accs, color=colors, edgecolor="white", linewidth=0.5, width=0.6)
     for bar, acc in zip(bars, accs):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.8,
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.8,
                 f"{acc:.1f}%", ha="center", va="bottom", fontweight="bold",
                 color="white", fontsize=13)
     ax.set_ylabel("Accuracy (%)")
@@ -261,7 +264,7 @@ fig, ax = plt.subplots(figsize=(10, 5))
     ax.set_ylim(0, max(accs) + 12)
     ax.axhline(50, color="white", linestyle="--", alpha=0.3, label="Coin flip (50%)")
     ax.legend(loc="upper left", fontsize=9)
-plt.tight_layout()
+    plt.tight_layout()
     fig.savefig(img_dir / "pregame_model_comparison.png", dpi=150)
     plt.close(fig)
 
@@ -270,7 +273,6 @@ def plot_pregame_shap_importance(shap_vals, feature_cols, img_dir):
     """SHAP feature importance bar chart."""
     mean_abs = np.abs(shap_vals.values).mean(axis=0)
     order = np.argsort(mean_abs)[::-1][:20]
-
     fig, ax = plt.subplots(figsize=(10, 8))
     names = [friendly(feature_cols[i]) for i in order]
     vals = [mean_abs[i] for i in order]
@@ -279,59 +281,49 @@ def plot_pregame_shap_importance(shap_vals, feature_cols, img_dir):
             edgecolor="white", linewidth=0.3)
     ax.set_yticks(range(len(order)))
     ax.set_yticklabels(names[::-1], fontsize=10)
-ax.set_xlabel("Mean |SHAP Value| (Impact on Win Probability)")
+    ax.set_xlabel("Mean |SHAP Value| (Impact on Win Probability)")
     ax.set_title("Pre-Game Feature Importance (SHAP)")
-plt.tight_layout()
+    plt.tight_layout()
     fig.savefig(img_dir / "pregame_shap_importance.png", dpi=150)
     plt.close(fig)
 
 
 def plot_pregame_timeline(df, probs, img_dir):
     """Timeline of pre-game predicted win probability vs actual outcomes."""
-fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(14, 5))
     n = len(df)
     x = range(n)
-wins = df["WIN"].values
-
+    wins = df["WIN"].values
     for i in x:
         color = GREEN if wins[i] == 1 else RED
         ax.bar(i, probs[i], color=color, alpha=0.7, width=0.8)
-
-# Rolling average
+    # Rolling average
     roll = pd.Series(probs).rolling(5, min_periods=1).mean()
     ax.plot(x, roll, color=GOLD, linewidth=2.5, label="5-game rolling avg")
     ax.axhline(0.5, color="white", linestyle="--", alpha=0.4, label="50% threshold")
-
-ax.set_xlabel("Game Number")
-ax.set_ylabel("Pre-Game Win Probability")
+    ax.set_xlabel("Game Number")
+    ax.set_ylabel("Pre-Game Win Probability")
     ax.set_title("Pre-Game Win Probability Timeline — 2025-26 Season")
     ax.legend(loc="upper left", fontsize=9)
     ax.set_xlim(-0.5, n - 0.5)
     ax.set_ylim(0, 1)
-
-    # Add W/L labels on top
     for i in x:
-        if i % 3 == 0:  # every 3rd game to avoid clutter
+        if i % 3 == 0:
             opp = df.iloc[i]["OPP_ABBREV"]
             ax.text(i, min(probs[i] + 0.04, 0.97), opp, ha="center",
                     fontsize=6, color="white", alpha=0.7, rotation=90)
-
-plt.tight_layout()
+    plt.tight_layout()
     fig.savefig(img_dir / "pregame_timeline.png", dpi=150)
     plt.close(fig)
 
 
 def plot_calibration(y_true, probs, img_dir):
     """Calibration plot: predicted probability vs observed win rate."""
-fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-    # Left: calibration curve
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     ax = axes[0]
     n_bins = 5
     bin_edges = np.linspace(0, 1, n_bins + 1)
-    bin_centers = []
-    bin_rates = []
-    bin_counts = []
+    bin_centers, bin_rates, bin_counts = [], [], []
     for lo, hi in zip(bin_edges[:-1], bin_edges[1:]):
         mask = (probs >= lo) & (probs < hi)
         if mask.sum() > 0:
@@ -351,18 +343,15 @@ fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.legend(fontsize=9)
-
-    # Right: prediction distribution
-ax2 = axes[1]
+    ax2 = axes[1]
     ax2.hist(probs[y_true == 1], bins=15, alpha=0.7, color=GREEN, label="Actual Wins", edgecolor="white")
     ax2.hist(probs[y_true == 0], bins=15, alpha=0.7, color=RED, label="Actual Losses", edgecolor="white")
-ax2.set_xlabel("Predicted Win Probability")
+    ax2.set_xlabel("Predicted Win Probability")
     ax2.set_ylabel("Number of Games")
     ax2.set_title("Prediction Distribution by Outcome")
     ax2.legend(fontsize=9)
     ax2.axvline(0.5, color="white", linestyle="--", alpha=0.4)
-
-plt.tight_layout()
+    plt.tight_layout()
     fig.savefig(img_dir / "pregame_calibration.png", dpi=150)
     plt.close(fig)
 
@@ -371,23 +360,20 @@ def plot_game_waterfall(contributions, game_label, img_dir, filename):
     """Waterfall chart for one game's SHAP contributions."""
     top_n = 12
     contribs = contributions[:top_n]
-
     fig, ax = plt.subplots(figsize=(10, 6))
     names = [c["friendly"] for c in contribs][::-1]
     vals = [c["shap_value"] for c in contribs][::-1]
     fvals = [c["feature_value"] for c in contribs][::-1]
     colors = [GREEN if v > 0 else RED for v in vals]
-
     bars = ax.barh(range(len(names)), vals, color=colors, edgecolor="white",
                    linewidth=0.3, height=0.7)
-ax.set_yticks(range(len(names)))
+    ax.set_yticks(range(len(names)))
     labels = [f"{n} = {fv:.2g}" for n, fv in zip(names, fvals)]
     ax.set_yticklabels(labels, fontsize=9)
     ax.axvline(0, color="white", linewidth=0.5)
     ax.set_xlabel("SHAP Value (→ Win | ← Loss)")
     ax.set_title(f"Pre-Game Prediction Breakdown: {game_label}")
-
-plt.tight_layout()
+    plt.tight_layout()
     fig.savefig(img_dir / filename, dpi=150)
     plt.close(fig)
 
@@ -407,12 +393,11 @@ def plot_accuracy_by_confidence(y_true, probs, img_dir):
         else:
             accs.append(0)
             counts.append(0)
-
-    bars = ax.bar([f"≥{t:.0%}" for t in thresholds], accs,
+    bars = ax.bar([f">{t:.0%}" for t in thresholds], accs,
                   color=[BLUE, BLUE, GOLD, GOLD, GOLD], edgecolor="white",
                   linewidth=0.5, width=0.5)
     for bar, acc, cnt in zip(bars, accs, counts):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1,
                 f"{acc:.0f}%\n({cnt} games)", ha="center", fontsize=10,
                 color="white", fontweight="bold")
     ax.set_ylabel("Accuracy (%)")
@@ -420,7 +405,7 @@ def plot_accuracy_by_confidence(y_true, probs, img_dir):
     ax.set_title("Model Accuracy by Confidence Level")
     ax.set_ylim(0, max(accs) + 15)
     ax.axhline(50, color="white", linestyle="--", alpha=0.3)
-plt.tight_layout()
+    plt.tight_layout()
     fig.savefig(img_dir / "pregame_accuracy_by_confidence.png", dpi=150)
     plt.close(fig)
 
