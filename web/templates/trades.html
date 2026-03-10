@@ -12,7 +12,7 @@
 
   <!-- Asset tiers -->
   <div class="chart-box">
-    <h3>Warriors Asset Classification</h3>
+    <h3>{{ team_name }} Asset Classification</h3>
     <div id="assetChart"></div>
     <div class="table-container" style="margin-top:1rem">
       <table id="assetTable">
@@ -73,15 +73,16 @@
 {% block scripts %}
 <script>
 const SEASON = '{{ season }}';
+const TEAM = '{{ team }}';
 
 async function load() {
   // Fetch data from multiple endpoints
   let adv, standings, gapFill;
   try {
     [adv, standings, gapFill] = await Promise.all([
-      apiFetch(`/api/advanced?season=${SEASON}`),
-      apiFetch(`/api/standings?season=${SEASON}`),
-      apiFetch(`/api/gap-fill?season=${SEASON}`),
+      apiFetch(`/api/advanced?season=${SEASON}&team=${TEAM}`),
+      apiFetch(`/api/standings?season=${SEASON}&team=${TEAM}`),
+      apiFetch(`/api/gap-fill?season=${SEASON}&team=${TEAM}`),
     ]);
   } catch(e) { return showError(e.message); }
 
@@ -127,7 +128,8 @@ async function load() {
   </tr>`).join('');
 
   // ── Sellers ──
-  const sellers = standings.filter(t => t.WinPCT < 0.42 && t.TeamName !== 'Warriors');
+  const currentTeamName = '{{ team_name }}';
+  const sellers = standings.filter(t => t.WinPCT < 0.42 && t.TeamName !== currentTeamName);
   Plotly.newPlot('sellerChart', [{
     x: sellers.map(t => `${t.TeamCity} ${t.TeamName}`),
     y: sellers.map(t => t.WINS),

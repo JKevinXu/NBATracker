@@ -61,12 +61,13 @@
 {% block scripts %}
 <script>
 const SEASON = '{{ season }}';
+const TEAM = '{{ team }}';
 const tierColors = { Elite: '#3fb950', Positive: '#58a6ff', Neutral: '#8b949e', Negative: '#d29922', Struggling: '#f85149' };
 const tierClass = { Elite: 'tier-elite', Positive: 'tier-positive', Neutral: 'tier-neutral', Negative: 'tier-negative', Struggling: 'tier-struggling' };
 
 async function load() {
   let data;
-  try { data = await apiFetch(`/api/advanced?season=${SEASON}`); }
+  try { data = await apiFetch(`/api/advanced?season=${SEASON}&team=${TEAM}`); }
   catch(e) { return showError(e.message); }
 
   // OFF vs DEF scatter

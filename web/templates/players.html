@@ -63,10 +63,11 @@
 {% block scripts %}
 <script>
 const SEASON = '{{ season }}';
+const TEAM = '{{ team }}';
 
 async function load() {
   let data;
-  try { data = await apiFetch(`/api/team-stats?season=${SEASON}`); }
+  try { data = await apiFetch(`/api/team-stats?season=${SEASON}&team=${TEAM}`); }
   catch(e) { return showError(e.message); }
 
   // PPG bar

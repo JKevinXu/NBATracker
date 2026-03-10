@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-header">
-  <h1>Warriors Dashboard</h1>
+  <h1>{{ team_label }} Dashboard</h1>
   <p>{{ season }} Season Overview</p>
 </div>
 
@@ -66,37 +66,40 @@
 {% block scripts %}
 <script>
 const SEASON = '{{ season }}';
+const TEAM = '{{ team }}';
 
 async function load() {
   let standings, gameLog;
   try {
     [standings, gameLog] = await Promise.all([
-      apiFetch(`/api/standings?season=${SEASON}`),
-      apiFetch(`/api/game-log?season=${SEASON}`),
+      apiFetch(`/api/standings?season=${SEASON}&team=${TEAM}`),
+      apiFetch(`/api/game-log?season=${SEASON}&team=${TEAM}`),
     ]);
   } catch(e) { return showError(e.message); }
 
-  // Find GSW
-  const gsw = standings.find(t => t.TeamName === 'Warriors') || standings[0];
+  // Find selected team row
+  const selectedTeamName = '{{ team_name }}';
+  const targetTeamId = {{ team_options[team].id }};
+  const selectedTeam = standings.find(t => t.TeamID === targetTeamId || t.TeamName === selectedTeamName) || standings[0];
 
   // KPI
   const kpi = document.getElementById('kpiGrid');
-  const diff = (gsw.DiffPointsPG || 0);
+  const diff = (selectedTeam.DiffPointsPG || 0);
   kpi.innerHTML = `
     <div class="card">
       <div class="card-title">Record</div>
-      <div class="card-value">${gsw.WINS}-${gsw.LOSSES}</div>
-      <div class="card-sub">${(gsw.WinPCT * 100).toFixed(1)}% win rate</div>
+      <div class="card-value">${selectedTeam.WINS}-${selectedTeam.LOSSES}</div>
+      <div class="card-sub">${(selectedTeam.WinPCT * 100).toFixed(1)}% win rate</div>
     </div>
     <div class="card">
       <div class="card-title">Seed</div>
-      <div class="card-value text-gold">#${gsw.PlayoffRank}</div>
-      <div class="card-sub">Western Conference</div>
+      <div class="card-value text-gold">#${selectedTeam.PlayoffRank}</div>
+      <div class="card-sub">Conference Rank</div>
     </div>
     <div class="card">
       <div class="card-title">Points/Game</div>
-      <div class="card-value">${gsw.PointsPG.toFixed(1)}</div>
-      <div class="card-sub">Opp: ${gsw.OppPointsPG.toFixed(1)}</div>
+      <div class="card-value">${selectedTeam.PointsPG.toFixed(1)}</div>
+      <div class="card-sub">Opp: ${selectedTeam.OppPointsPG.toFixed(1)}</div>
     </div>
     <div class="card">
       <div class="card-title">Pt Diff</div>
@@ -108,10 +111,10 @@ async function load() {
   // Standings table
   const sb = document.getElementById('standingsBody');
   sb.innerHTML = standings.map((t, i) => {
-    const isGSW = t.TeamName === 'Warriors';
-    return `<tr style="${isGSW ? 'background:rgba(255,199,44,0.08)' : ''}">
+    const isSelected = t.TeamID === targetTeamId || t.TeamName === selectedTeamName;
+    return `<tr style="${isSelected ? 'background:rgba(255,199,44,0.08)' : ''}">
       <td>${i + 1}</td>
-      <td style="${isGSW ? 'color:#ffc72c;font-weight:600' : ''}">${t.TeamCity} ${t.TeamName}</td>
+      <td style="${isSelected ? 'color:#ffc72c;font-weight:600' : ''}">${t.TeamCity} ${t.TeamName}</td>
       <td>${t.WINS}</td><td>${t.LOSSES}</td>
       <td>${(t.WinPCT * 100).toFixed(1)}%</td>
       <td>${t.ConferenceGamesBack || '-'}</td>

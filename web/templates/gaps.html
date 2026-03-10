@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <h1>Gap-Fill Analysis</h1>
-  <p>{{ season }} league-wide scan for players who best fill Warriors weaknesses</p>
+  <p>{{ season }} league-wide scan for players who best fill {{ team_name }} weaknesses</p>
 </div>
 
 <div id="loading" class="loading">Scanning league for gap-fill candidates…</div>
@@ -76,6 +76,7 @@
 {% block scripts %}
 <script>
 const SEASON = '{{ season }}';
+const TEAM = '{{ team }}';
 let allData = [];
 
 function primaryStrength(p) {
@@ -128,7 +129,7 @@ function filterArch(type) {
 
 async function load() {
   let data;
-  try { data = await apiFetch(`/api/gap-fill?season=${SEASON}`); }
+  try { data = await apiFetch(`/api/gap-fill?season=${SEASON}&team=${TEAM}`); }
   catch(e) { return showError(e.message); }
   allData = data;
 

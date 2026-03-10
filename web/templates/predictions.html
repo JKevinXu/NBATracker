@@ -60,10 +60,11 @@
 {% block scripts %}
 <script>
 const SEASON = '{{ season }}';
+const TEAM = '{{ team }}';
 
 async function load() {
   let data;
-  try { data = await apiFetch(`/api/predictions?season=${SEASON}`); }
+  try { data = await apiFetch(`/api/predictions?season=${SEASON}&team=${TEAM}`); }
   catch(e) { return showError(e.message); }
   const c = data.current;
   const mc = data.monte_carlo;
